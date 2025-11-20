@@ -4,15 +4,17 @@ let sphere;
 let angle = 0;
 
 let cameraAngle = 0;
-let cameraDistance = 20;
+let cameraDistance = 35;
 
 function initScene(canvas) {
     gl = canvas.getContext("webgl2");
     if (!gl) {
         alert("WebGL not supported");
+        return;
     }
-    canvas.width = canvas.clientWidth;
-    canvas.height = canvas.clientHeight;
+    
+    resizeCanvas(canvas);
+    window.addEventListener('resize', () => resizeCanvas(canvas));
 
     gl.viewport(0, 0, canvas.width, canvas.height);
 
@@ -37,8 +39,8 @@ function initScene(canvas) {
     canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
         cameraDistance += e.deltaY * 0.01;
-        cameraDistance = Math.max(5, Math.min(30, cameraDistance));
-    });
+        cameraDistance = Math.max(15, Math.min(60, cameraDistance));
+    }, { passive: false });
 }
 
 
@@ -50,56 +52,90 @@ function drawScene() {
     // camera
     const camX = Math.sin(cameraAngle) * cameraDistance;
     const camZ = Math.cos(cameraAngle) * cameraDistance;
-    const view = mat4.create();
-    mat4.lookAt(view, [camX, 5, camZ], [0, 0, 0], [0, 1, 0]);
+    const view = lookAt([camX, 5, camZ], [0, 0, 0], [0, 1, 0]);
 
     // projection
-    const proj = mat4.create();
-    mat4.perspective(proj, Math.PI / 4, gl.canvas.width/gl.canvas.height, 0.1, 100);
+    const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+    const proj = perspective(Math.PI / 4, aspect, 0.1, 100);
 
-    // LIGHT
-    const lightPos = [10, 10, 10];
+    const lightPos = [0, 0, 0];
 
-    // sun at the center
-    drawSphere([0, 0, 0], 2.5, [1.0, 0.8, 0.1], view, proj, lightPos);
+    // sun
+    drawSphere([0, 0, 0], 2.5, [1.0, 0.9, 0.3], view, proj, lightPos, true);
 
-    // planet a
-    let planetAAngle = angle;
-    let planetAX = Math.cos(planetAAngle) * 6;
-    let planetAZ = Math.sin(planetAAngle) * 6;
-    drawSphere([planetAX, 0, planetAZ], 1, [0.2, 0.5, 1.0], view, proj, lightPos);
+    // mercury
+    let mercuryAngle = angle * 4.15;
+    let mercuryX = Math.cos(mercuryAngle) * 4;
+    let mercuryZ = Math.sin(mercuryAngle) * 4;
+    drawSphere([mercuryX, 0, mercuryZ], 0.38, [0.7, 0.7, 0.7], view, proj, lightPos, false);
 
-    // moon  (orbiting Planet a)
-    let moonA1Angle = angle * 3;
-    let moonA1X = planetAX + Math.cos(moonA1Angle) * 2;
-    let moonA1Z = planetAZ + Math.sin(moonA1Angle) * 2;
-    drawSphere([moonA1X, 0, moonA1Z], 0.3, [0.7, 0.7, 0.7], view, proj, lightPos);
+    // venus
+    let venusAngle = angle * 1.62;
+    let venusX = Math.cos(venusAngle) * 5.5;
+    let venusZ = Math.sin(venusAngle) * 5.5;
+    drawSphere([venusX, 0, venusZ], 0.95, [0.9, 0.7, 0.4], view, proj, lightPos, false);
 
-    // planet b
-    let planetBAngle = angle * 0.5;
-    let planetBX = Math.cos(planetBAngle) * 9;
-    let planetBZ = Math.sin(planetBAngle) * 9;
-    drawSphere([planetBX, 0, planetBZ], 0.8, [1.0, 0.3, 0.2], view, proj, lightPos);
+    // the earth
+    let earthAngle = angle * 1.0;
+    let earthX = Math.cos(earthAngle) * 7;
+    let earthZ = Math.sin(earthAngle) * 7;
+    drawSphere([earthX, 0, earthZ], 1.0, [0.2, 0.5, 1.0], view, proj, lightPos, false);
+
+    // moon (orbiting Earth)
+    let moonAngle = angle * 13;
+    let moonX = earthX + Math.cos(moonAngle) * 1.5;
+    let moonZ = earthZ + Math.sin(moonAngle) * 1.5;
+    drawSphere([moonX, 0, moonZ], 0.27, [0.8, 0.8, 0.8], view, proj, lightPos, false);
+
+    // mars
+    let marsAngle = angle * 0.53;
+    let marsX = Math.cos(marsAngle) * 9;
+    let marsZ = Math.sin(marsAngle) * 9;
+    drawSphere([marsX, 0, marsZ], 0.53, [1.0, 0.3, 0.2], view, proj, lightPos, false);
+
+    // jupiter
+    let jupiterAngle = angle * 0.08;
+    let jupiterX = Math.cos(jupiterAngle) * 13;
+    let jupiterZ = Math.sin(jupiterAngle) * 13;
+    drawSphere([jupiterX, 0, jupiterZ], 2.2, [0.9, 0.7, 0.5], view, proj, lightPos, false);
+
+    // saturn
+    let saturnAngle = angle * 0.03;
+    let saturnX = Math.cos(saturnAngle) * 17;
+    let saturnZ = Math.sin(saturnAngle) * 17;
+    drawSphere([saturnX, 0, saturnZ], 1.9, [0.9, 0.8, 0.6], view, proj, lightPos, false);
+
+    // uranus
+    let uranusAngle = angle * 0.01;
+    let uranusX = Math.cos(uranusAngle) * 21;
+    let uranusZ = Math.sin(uranusAngle) * 21;
+    drawSphere([uranusX, 0, uranusZ], 1.0, [0.5, 0.8, 0.9], view, proj, lightPos, false);
+
+    // neptune
+    let neptuneAngle = angle * 0.006;
+    let neptuneX = Math.cos(neptuneAngle) * 25;
+    let neptuneZ = Math.sin(neptuneAngle) * 25;
+    drawSphere([neptuneX, 0, neptuneZ], 0.98, [0.3, 0.4, 0.9], view, proj, lightPos, false);
 }
 
 
-function drawSphere(position, scale, color, view, proj, lightPos) {
+function drawSphere(position, scale, color, view, proj, lightPos, isEmissive = false) {
     gl.bindVertexArray(sphere.vao);
 
-    const model = mat4.create();
-    mat4.translate(model, model, position);
-    mat4.scale(model, model, [scale, scale, scale]);
+    let model = mat4Identity();
+    model = mat4Translate(model, position);
+    model = mat4Scale(model, [scale, scale, scale]);
 
-    const normalMatrix = mat4.create();
-    mat4.invert(normalMatrix, model);
-    mat4.transpose(normalMatrix, normalMatrix);
+    let normalMatrix = mat4Invert(model);
+    normalMatrix = mat4Transpose(normalMatrix);
 
-    gl.uniformMatrix4fv(gl.getUniformLocation(program,"uModel"),false, model);
-    gl.uniformMatrix4fv(gl.getUniformLocation(program,"uView"),false, view);
-    gl.uniformMatrix4fv(gl.getUniformLocation(program,"uProjection"),false, proj);
-    gl.uniformMatrix4fv(gl.getUniformLocation(program,"uNormalMatrix"),false, normalMatrix);
+    gl.uniformMatrix4fv(gl.getUniformLocation(program,"uModel"), false, model);
+    gl.uniformMatrix4fv(gl.getUniformLocation(program,"uView"), false, view);
+    gl.uniformMatrix4fv(gl.getUniformLocation(program,"uProjection"), false, proj);
+    gl.uniformMatrix4fv(gl.getUniformLocation(program,"uNormalMatrix"), false, normalMatrix);
     gl.uniform3fv(gl.getUniformLocation(program,"uLightPos"), lightPos);
     gl.uniform3fv(gl.getUniformLocation(program,"uColor"), color);
+    gl.uniform1f(gl.getUniformLocation(program,"uEmissive"), isEmissive ? 1.0 : 0.0);
 
     gl.drawElements(gl.TRIANGLES, sphere.count, gl.UNSIGNED_SHORT, 0);
 }
