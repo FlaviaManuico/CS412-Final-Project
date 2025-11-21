@@ -3,7 +3,7 @@ window.onload = () => {
 
     initScene(canvas);
 
-    function loop() {
+    function loop(){
         drawScene();
         requestAnimationFrame(loop);
     }

@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Cosmic Solar System</title>
-
     <link rel="stylesheet" href="css/style.css">
 
     <script src="js/transformations.js"></script>
@@ -43,22 +42,41 @@
         if (uEmissive > 0.5) {
             fragColor = vec4(uColor, 1.0);
         } else {
-        vec3 N = normalize(vNormal);
-        vec3 L = normalize(uLightPos - vPosition);
-        float diffuse = max(dot(N, L), 0.0);
-        vec3 color = uColor * (0.3 + 0.7 * diffuse);
-        fragColor = vec4(color, 1.0);
+            vec3 N = normalize(vNormal);
+            vec3 L = normalize(uLightPos - vPosition);
+            float diffuse = max(dot(N, L), 0.0);
+            vec3 color = uColor * (0.3 + 0.7 * diffuse);
+            fragColor = vec4(color, 1.0);
         }
     }
     </script>
-
 </head>
 
 <body>
     <canvas id="glcanvas"></canvas>
 
+    <!-- Planet Info Panel -->
+    <div id="planet-info" style="
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 8px;
+        display: none;
+        max-width: 250px;
+    ">
+      <h3 id="info-name"></h3>
+      <p id="info-text"></p>
+      <button id="info-close" style="
+          background: red; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;
+      ">X</button>
+    </div>
+
     <script src="js/planets.js"></script>
     <script src="js/scene.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/interaction.js"></script>
 </body>
 </html>
