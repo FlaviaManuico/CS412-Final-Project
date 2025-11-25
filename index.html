@@ -26,21 +26,16 @@
         vNormal = mat3(uNormalMatrix) * aNormal;
         vPosition = (uModel * aPosition).xyz;
 
-        float x = aPosition.x;
-        float y = aPosition.y;
-        float z = aPosition.z;
-
-        float u = atan(z, x) / (2.0 * 3.14159265) + 0.5;
-        float v = acos(y) / 3.14159265;
-
+        // Spherical UV mapping (fix stretching at poles)
+        float u = 0.5 + atan(vPosition.z, vPosition.x) / (2.0 * 3.14159265);
+        float v = 0.5 - asin(vPosition.y / length(vPosition)) / 3.14159265;
         vTexCoord = vec2(u, v);
-    
+
         gl_Position = uProjection * uView * uModel * aPosition;
     }
     </script>
 
-
-    <!-- ===== fragment SHADER ===== -->
+    <!-- ===== FRAGMENT SHADER ===== -->
     <script id="fs" type="x-shader/x-fragment">#version 300 es
     precision mediump float;
 
@@ -53,38 +48,45 @@
     uniform float uEmissive;
 
     uniform sampler2D uTexture;
+    uniform sampler2D uBumpMap;
     uniform int useTexture;
+    uniform int useBump;
 
     out vec4 fragColor;
 
     void main() {
-
-        // Sun glow
+        // Emissive planets like Sun
         if (uEmissive > 0.5) {
             fragColor = vec4(uColor, 1.0);
             return;
         }
 
+        // Calculate normal with bump map if available
         vec3 N = normalize(vNormal);
+        if (useBump == 1) {
+            vec3 bump = texture(uBumpMap, vTexCoord).rgb;
+            bump = bump * 2.0 - 1.0; // convert from [0,1] to [-1,1]
+            N = normalize(N + bump * 0.5);
+        }
+
         vec3 L = normalize(uLightPos - vPosition);
+        vec3 V = normalize(-vPosition);
 
         float diffuse = max(dot(N, L), 0.0);
-        float ambient = 0.55;         // <-- brighter ambient
+        float ambient = 0.55;
         float lightFactor = ambient + diffuse * 0.45;
-       
 
-        vec3 texColor = (useTexture == 1)
-            ? texture(uTexture, vTexCoord).rgb
-            : uColor;
+        vec3 texColor = (useTexture == 1) 
+                        ? texture(uTexture, vTexCoord).rgb 
+                        : uColor;
 
         fragColor = vec4(texColor * lightFactor, 1.0);
     }
     </script>
-
 </head>
 
 <body>
-    <canvas id="glcanvas"></canvas>
+    <canvas id="glcanvas" style="width: 100vw; height: 100vh; display: block;"></canvas>
 
     <!-- Planet Info Panel -->
     <div id="planet-info" style="
@@ -97,13 +99,20 @@
         border-radius: 8px;
         display: none;
         max-width: 250px;
+        font-family: Arial, sans-serif;
+        z-index: 100;
     ">
-      <h3 id="info-name"></h3>
-      <p id="info-text"></p>
-      <button id="info-close" style="
-          background: red; color: white; border: none;
-          padding: 5px 10px; border-radius: 5px; cursor: pointer;
-      ">X</button>
+        <h3 id="info-name" style="margin: 0 0 5px 0;"></h3>
+        <p id="info-text" style="margin: 0;"></p>
+        <button id="info-close" style="
+            background: red;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 5px;
+        ">X</button>
     </div>
 
     <!-- Scripts -->
@@ -111,5 +120,12 @@
     <script src="js/scene.js"></script>
     <script src="js/main.js"></script>
     <script src="js/interaction.js"></script>
+
+    <script>
+        // Close info panel
+        document.getElementById('info-close').addEventListener('click', () => {
+            document.getElementById('planet-info').style.display = 'none';
+        });
+    </script>
 </body>
 </html>
