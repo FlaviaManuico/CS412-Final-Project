@@ -29,7 +29,7 @@ const planetData = [
     
     {name:"Mars", radius:0.53, distance:9, speed:0.53, color:[1.0,0.3,0.2], texture:"js/texture/mars.jpg",
      moons:[{name:"Phobos", radius:0.14,distance:0.8,speed:3,color:[0.6,0.6,0.6], texture:"js/texture/phobos.jpg"},
-            {name:"Deimos", radius:0.08,distance:1.1,speed:2.5,color:[0.7,0.7,0.7], texture:"js/texture/deimos.png"}],
+            {name:"Deimos", radius:0.08,distance:1.1,speed:2.5,color:[0.7,0.7,0.7], texture:"js/texture/deimos.jpg"}],
      info:{realRadius:"3,389.5 km", tilt:"25.19°", rotationPeriod:"1.03 Earth days", orbitPeriod:"687 Earth days", distance:"227.9 million km", moons:2, description:"Known as the Red Planet, famous for its reddish appearance and potential for human colonization."}},
     
     {name:"Jupiter", radius:2.2, distance:13, speed:0.08, color:[0.9,0.7,0.5], texture:"js/texture/jupiter.jpg",
