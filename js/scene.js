@@ -16,7 +16,8 @@ let camera = {
     angle: 0,
     distance: 35,
     target: [0, 0, 0],
-    height: 5
+    height: 5 ,
+    cabinOffset: [0, 1.5, -2] // spaceship cockpit offseT
 };
 
 // Planet textures storage (keyed by texture URL or custom key)
@@ -56,22 +57,157 @@ const planetData = [
 let stars = [];
 function initStars(){
     stars = [];
-    for(let i=0;i<500;i++){
+    for(let i=0;i<800;i++){
         stars.push({position:[(Math.random()-0.5)*100,(Math.random()-0.5)*100,(Math.random()-0.5)*100], size: Math.random()*0.05+0.02});
     }
 }
 
 // ===== Asteroids =====
 let asteroids = [];
-function initAsteroids(){
+function initAsteroids() {
     asteroids = [];
-    const asteroidCount = 500;
-    const asteroidInner = 12;
-    const asteroidOuter = 16;
-    for(let i=0;i<asteroidCount;i++){
-        asteroids.push({angle:Math.random()*Math.PI*2, distance:asteroidInner+Math.random()*(asteroidOuter-asteroidInner), speed:0.001+Math.random()*0.002, size: Math.random()*0.1+0.05});
+    const count = 500, inner = 12, outer = 16;
+    for (let i = 0; i < count; i++) {
+        asteroids.push({
+            angle: Math.random() * Math.PI * 2,
+            distance: inner + Math.random() * (outer - inner),
+            speed: 0.001 + Math.random() * 0.002,
+            size: Math.random() * 0.1 + 0.05
+        });
     }
 }
+function addAsteroids(count = 50) {
+    const inner = 12, outer = 16;
+    for (let i = 0; i < count; i++) {
+        asteroids.push({
+            angle: Math.random() * Math.PI * 2,
+            distance: inner + Math.random() * (outer - inner),
+            speed: 0.001 + Math.random() * 0.002,
+            size: Math.random() * 0.1 + 0.05
+        });
+    }
+}
+window.addAsteroids = addAsteroids;
+
+// ===== Spaceships =====
+let spaceships = [];
+function initSpaceships() {
+    spaceships = [];
+    addSpaceships(3);
+}
+function addSpaceships(count = 1) {
+    for (let i = 0; i < count; i++) {
+        spaceships.push({
+            position: [
+                (Math.random()-0.5)*30,
+                1 + Math.random()*4,
+                (Math.random()-0.5)*30
+            ],
+            size: 1.5 + Math.random()*0.5,
+            speed: 0.01 + Math.random()*0.02,
+            angle: Math.random()*Math.PI*2
+        });
+    }
+}
+window.addSpaceships = addSpaceships;
+
+// ===== Spaceship mesh with engine flame =====
+function createSpaceship(gl){
+    const positions = [];
+    const normals = [];
+    const uvs = [];
+    const indices = [];
+
+    const segments = 16;
+    const radius = 0.2;    // fuselage radius
+    const length = 1.0;    // fuselage length
+
+    // --- Fuselage (cylinder) ---
+    for(let i=0;i<=segments;i++){
+        const theta = (i/segments)*2*Math.PI;
+        const x = Math.cos(theta)*radius;
+        const y = Math.sin(theta)*radius;
+
+        // bottom circle
+        positions.push(x, y, 0);
+        normals.push(x, y, 0);
+        uvs.push(i/segments,0);
+
+        // top circle
+        positions.push(x, y, length*0.7);
+        normals.push(x, y, 0);
+        uvs.push(i/segments,1);
+    }
+
+    for(let i=0;i<segments;i++){
+        const idx = i*2;
+        indices.push(idx, idx+1, idx+3);
+        indices.push(idx, idx+3, idx+2);
+    }
+
+    // --- Nose cone ---
+    const noseTipIdx = positions.length/3;
+    positions.push(0,0,length); // tip
+    normals.push(0,0,1);
+    uvs.push(0.5,1);
+
+    for(let i=0;i<segments;i++){
+        const idx = i*2 + 1;
+        const nextIdx = ((i+1)%segments)*2 + 1;
+        indices.push(idx, nextIdx, noseTipIdx);
+    }
+
+    // --- Wings ---
+    const wingZ = length*0.3;
+    const wingLength = 0.5;
+    const wingHeight = 0.02;
+
+    let lwStart = positions.length/3;
+    positions.push(-wingLength,0,wingZ, 0,wingHeight,wingZ+0.05, -0.1,0,wingZ+0.05);
+    normals.push(0,1,0,0,1,0,0,1,0);
+    uvs.push(0,0,1,0,0.5,1);
+    indices.push(lwStart,lwStart+1,lwStart+2);
+
+    let rwStart = positions.length/3;
+    positions.push(wingLength,0,wingZ, 0,wingHeight,wingZ+0.05, 0.1,0,wingZ+0.05);
+    normals.push(0,1,0,0,1,0,0,1,0);
+    uvs.push(0,0,1,0,0.5,1);
+    indices.push(rwStart,rwStart+1,rwStart+2);
+
+    // --- Tail fin ---
+    const tailZ = 0.0;
+    const tailHeight = 0.2;
+    const tfStart = positions.length/3;
+    positions.push(0,tailHeight,tailZ, 0,0.02,tailZ+0.1, 0,0.02,tailZ+0.1);
+    normals.push(0,1,0,0,1,0,0,1,0);
+    uvs.push(0,0,1,0,0.5,1);
+    indices.push(tfStart, tfStart+1, tfStart+2);
+
+    // --- Engine flame (cone at back) ---
+    const flameStartIdx = positions.length/3;
+    const flameHeight = 0.4;
+    const flameRadius = 0.1;
+    positions.push(0,0,-flameHeight); // tip of flame
+    normals.push(0,0,-1);
+    uvs.push(0.5,1);
+
+    for(let i=0;i<=segments;i++){
+        const theta = (i/segments)*2*Math.PI;
+        const x = Math.cos(theta)*flameRadius;
+        const y = Math.sin(theta)*flameRadius;
+        positions.push(x,y,0);   // base of flame
+        normals.push(0,0,-1);
+        uvs.push(i/segments,0);
+    }
+
+    for(let i=0;i<segments;i++){
+        indices.push(flameStartIdx, flameStartIdx+i+1, flameStartIdx+i+2);
+    }
+
+    return createVAO(gl, positions, normals, uvs, indices);
+}
+
+
 
 // ===== Load textures =====
 function loadTexture(gl, key, url){
@@ -113,12 +249,14 @@ function initScene(canvas){
     gl.useProgram(program);
 
     sphere = createSphere(gl,1,40,40);
+    spaceshipMesh = createSpaceship(gl); // spaceship mesh
     gl.enable(gl.DEPTH_TEST);
 
     initStars();
     initAsteroids();
+    initSpaceships();
 
-    // Load textures for planets and moons
+    // Load textures for planets, moons, sun
     planetData.forEach(p=>{
         if(p.texture) loadTexture(gl, p.name, p.texture);
         if(p.atmosphere) loadTexture(gl, p.name+"_atmo", p.atmosphere);
@@ -131,22 +269,10 @@ function initScene(canvas){
             });
         }
     });
-
     loadTexture(gl,"Sun","assets/texture/sun.jpg");
 }
 
 // ===== Draw scene =====
-// function drawScene(){
-//     if(!gl || !program) return;
-
-//     gl.clearColor(0.02,0.02,0.04,1.0);
-//     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-//     angle += 0.01 * animationSpeed;
-
-//     const camX = Math.sin(cameraAngle)*cameraDistance;
-//     const camZ = Math.cos(cameraAngle)*cameraDistance;
-//     const camY = 5;
-//     const view = lookAt([camX,camY,camZ], cameraTarget || [0,0,0], [0,1,0]);
 function drawScene(){
     if(!gl || !program) return;
 
@@ -158,7 +284,6 @@ function drawScene(){
     const camZ = Math.cos(camera.angle) * camera.distance;
     const camY = camera.height;
     const view = lookAt([camX, camY, camZ], camera.target, [0,1,0]);
-
     const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
     const proj = perspective(Math.PI/4, aspect, 0.1, 200.0);
     const lightPos = [0,0,0];
@@ -175,7 +300,6 @@ function drawScene(){
 
     function drawSphereInstance(position, scale, color, isEmissive=false, texKey=null, rotationAngle=0){
         gl.bindVertexArray(sphere.vao);
-
         let model = mat4Identity();
         model = mat4Translate(model,position);
         model = mat4RotateY(model,rotationAngle);
@@ -206,9 +330,7 @@ function drawScene(){
     // Stars
     stars.forEach(s=>drawSphereInstance(s.position,s.size,[1,1,1],true,null));
     // Sun
-    // drawSphereInstance([0,0,0],2.5,[1.0,0.9,0.3],true,null);
     drawSphereInstance([0,0,0],2.5,[1,1,1],true,"Sun");
-
 
     // Planets, moons, atmospheres, rings
     planetData.forEach(p=>{
@@ -218,21 +340,12 @@ function drawScene(){
         const scale = p.radius;
         const spin = angle * 2.0;
 
-        // Planet
         drawSphereInstance([x,0,z], scale, p.color, false, p.name, spin);
         p.center = [x,0,z];
 
-        // Atmosphere
-        if(p.atmosphere){
-            drawSphereInstance([x,0,z], scale+0.1, [1,1,1], false, p.name+"_atmo");
-        }
+        if(p.atmosphere) drawSphereInstance([x,0,z], scale+0.1, [1,1,1], false, p.name+"_atmo");
+        if(p.ring) drawRing(p.center, scale, p.ring);
 
-        // Ring
-        if(p.ring){
-            drawRing(p.center, scale, p.ring); // Implemented below
-        }
-
-        // Moons
         if(p.moons){
             p.moons.forEach(m=>{
                 const mAngle = angle*m.speed;
@@ -249,8 +362,65 @@ function drawScene(){
         const z = Math.sin(a.angle+angle*a.speed)*a.distance;
         drawSphereInstance([x,0,z], a.size,[0.7,0.7,0.7], false, null);
     });
+
+    // Spaceships
+    drawSpaceships(view, proj, lightPos);
 }
 
+// ===== Draw Spaceships (NEW modular function) =====
+function drawSpaceships(view, proj, lightPos){
+    const locModel = gl.getUniformLocation(program,"uModel");
+    const locView = gl.getUniformLocation(program,"uView");
+    const locProj = gl.getUniformLocation(program,"uProjection");
+    const locNormal = gl.getUniformLocation(program,"uNormalMatrix");
+    const locLight = gl.getUniformLocation(program,"uLightPos");
+    const locColor = gl.getUniformLocation(program,"uColor");
+    const locEmissive = gl.getUniformLocation(program,"uEmissive");
+    const locUseTexture = gl.getUniformLocation(program,"useTexture");
+
+    spaceships.forEach(s=>{
+    s.angle += s.speed;
+    const x = s.position[0] + Math.cos(s.angle)*0.5;
+    const z = s.position[2] + Math.sin(s.angle)*0.5;
+    const y = s.position[1];
+
+    gl.bindVertexArray(spaceshipMesh.vao);
+    let model = mat4Identity();
+    model = mat4Translate(model,[x,y,z]);
+    model = mat4RotateY(model,s.angle);
+    model = mat4Scale(model,[s.size,s.size,s.size]);
+    const normalMatrix = mat4Transpose(mat4Invert(model));
+
+    gl.uniformMatrix4fv(locModel,false,model);
+    gl.uniformMatrix4fv(locView,false,view);
+    gl.uniformMatrix4fv(locProj,false,proj);
+    gl.uniformMatrix4fv(locNormal,false,normalMatrix);
+    gl.uniform3fv(locLight,lightPos);
+    gl.uniform3fv(locColor,[0.8,0.1,0.1]);
+    gl.uniform1f(locEmissive,0.0);
+    gl.uniform1i(locUseTexture,0);
+
+    gl.drawElements(gl.TRIANGLES, spaceshipMesh.count, gl.UNSIGNED_SHORT,0);
+    gl.bindVertexArray(null);
+
+    // --- Draw dynamic flame ---
+    const flameScale = 0.8 + 0.2*Math.sin(angle*20); // pulse
+    let flameModel = mat4Identity();
+    flameModel = mat4Translate(flameModel,[x,y,z]);
+    flameModel = mat4RotateY(flameModel,s.angle);
+    flameModel = mat4Scale(flameModel,[s.size*flameScale,s.size*flameScale,s.size*flameScale]);
+    const flameNormal = mat4Transpose(mat4Invert(flameModel));
+
+    gl.uniformMatrix4fv(locModel,false,flameModel);
+    gl.uniformMatrix4fv(locNormal,false,flameNormal);
+    gl.uniform3fv(locColor,[1,0.5 + 0.5*Math.random(),0]); // fiery colors
+    gl.uniform1f(locEmissive,1.0);
+
+    gl.bindVertexArray(spaceshipMesh.vao);
+    gl.drawElements(gl.TRIANGLES, spaceshipMesh.count, gl.UNSIGNED_SHORT,0);
+    gl.bindVertexArray(null);
+});
+}
 // ===== Draw ring helper =====
 function drawRing(center, planetScale, ring){
     const segments = 64;

@@ -49,21 +49,31 @@ function updateCamera() {
 window.__updateInteraction = updateCamera;
 
 document.addEventListener("DOMContentLoaded", () => {
-
     const canvas = document.getElementById("glcanvas");
     const infoPanel = document.getElementById("planet-info");
     const infoName = document.getElementById("info-name");
     const infoText = document.getElementById("info-text");
     const infoClose = document.getElementById("info-close");
+    const asteroidButton = document.getElementById("add-asteroids"); // NEW BUTTON
 
     let isDragging = false;
     let lastMouseX = 0;
+
     if (infoClose) {
         infoClose.addEventListener("click", () => {
             infoPanel.style.display = "none";
             selectedPlanet = null;
             isMovingTowardsPlanet = false;
             isReturningHome = true;
+        });
+    }
+
+    if (asteroidButton) {
+        asteroidButton.addEventListener("click", () => {
+            if (window.addAsteroids) {
+                window.addAsteroids(50); // add 50 asteroids each click
+                console.log("Asteroids added!");
+            }
         });
     }
 
@@ -82,6 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
         infoPanel.style.display = "block";
     }
 
+    // ------------------------- Mouse drag for camera
     canvas.addEventListener("mousedown", e => {
         isDragging = true;
         lastMouseX = e.clientX;
@@ -96,8 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.addEventListener("mouseup", () => { isDragging = false; });
 
-    // -------------------------
-    // Project 3D position to NDC
+    // ------------------------- Project 3D position to NDC
     function projectToNDC(worldPos) {
         const camX = Math.sin(camera.angle) * camera.distance;
         const camZ = Math.cos(camera.angle) * camera.distance;
@@ -126,6 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ];
     }
 
+    // ------------------------- Click to select planet
     canvas.addEventListener("click", e => {
         if (isDragging) return;
 
@@ -164,13 +175,9 @@ document.addEventListener("DOMContentLoaded", () => {
             isMovingTowardsPlanet = true;
             showPlanetInfo(closest);
         }
-        // if (closest) {
-        //     selectedPlanet = closest;
-        //     isMovingTowardsPlanet = true;
-        //     showPlanetInfo(closest);
-        // }
-});
+    });
 
+    // ------------------------- Zoom
     canvas.addEventListener("wheel", e => {
         e.preventDefault();
         const zoomFactor = e.deltaY > 0 ? 1.05 : 0.95;

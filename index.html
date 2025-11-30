@@ -51,20 +51,12 @@
     out vec4 fragColor;
 
     void main() {
-        // Emissive planets like Sun
         if (uEmissive > 0.5) {
-            vec3 baseColor;
-            if (useTexture == 1) {
-                baseColor = texture(uTexture, vTexCoord).rgb;
-            } 
-            else {
-                baseColor = uColor;
-            }
+            vec3 baseColor = (useTexture == 1) ? texture(uTexture, vTexCoord).rgb : uColor;
             fragColor = vec4(baseColor * 1.8, 1.0);
             return;
         }
 
-        // Calculate normal with bump map if available
         vec3 N = normalize(vNormal);
         if (useBump == 1) {
             vec3 bump = texture(uBumpMap, vTexCoord).rgb;
@@ -73,15 +65,11 @@
         }
 
         vec3 L = normalize(uLightPos - vPosition);
-        vec3 V = normalize(-vPosition);
-
         float diffuse = max(dot(N, L), 0.0);
         float ambient = 0.45;
         float lightFactor = ambient + diffuse * 0.45;
 
-        vec3 texColor = (useTexture == 1) 
-                        ? texture(uTexture, vTexCoord).rgb 
-                        : uColor;
+        vec3 texColor = (useTexture == 1) ? texture(uTexture, vTexCoord).rgb : uColor;
 
         fragColor = vec4(texColor * lightFactor, 1.0);
     }
@@ -118,6 +106,21 @@
         ">X</button>
     </div>
 
+    <!-- Add Asteroids Button -->
+    <button id="add-asteroids" style="
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #444;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-family: Arial, sans-serif;
+        z-index: 100;
+    ">Add Asteroids 🚀</button>
+
     <!-- Scripts -->
     <script src="js/planets.js"></script>
     <script src="js/scene.js"></script>
@@ -128,6 +131,11 @@
         // Close info panel
         document.getElementById('info-close').addEventListener('click', () => {
             document.getElementById('planet-info').style.display = 'none';
+        });
+
+        // Add asteroids button
+        document.getElementById('add-asteroids').addEventListener('click', () => {
+            if (window.addAsteroids) window.addAsteroids(50); // Add 50 asteroids
         });
     </script>
 </body>
