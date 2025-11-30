@@ -1,3 +1,53 @@
+let selectedPlanet = null;
+let isMovingTowardsPlanet = false;
+let targetCameraPosition = null;
+const HOME_TARGET = [0, 0, 0];
+const HOME_DISTANCE = 35;
+
+let isReturningHome = false;
+
+// -------------------------
+// Animate camera toward selected planet
+function updateCamera() {
+    if (isMovingTowardsPlanet && selectedPlanet) {
+        const targetDist = selectedPlanet.radius * 4;
+        camera.distance += (targetDist - camera.distance) * 0.05;
+
+        camera.target[0] += (selectedPlanet.center[0] - camera.target[0]) * 0.05;
+        camera.target[1] += (selectedPlanet.center[1] - camera.target[1]) * 0.05;
+        camera.target[2] += (selectedPlanet.center[2] - camera.target[2]) * 0.05;
+
+        const dist =
+            Math.abs(camera.target[0] - selectedPlanet.center[0]) +
+            Math.abs(camera.target[1] - selectedPlanet.center[1]) +
+            Math.abs(camera.target[2] - selectedPlanet.center[2]);
+
+        if (dist < 0.05 && Math.abs(camera.distance - targetDist) < 0.5) {
+            isMovingTowardsPlanet = false;
+        }
+        return;
+    }
+
+    if (isReturningHome) {
+        camera.distance += (HOME_DISTANCE - camera.distance) * 0.05;
+
+        camera.target[0] += (HOME_TARGET[0] - camera.target[0]) * 0.05;
+        camera.target[1] += (HOME_TARGET[1] - camera.target[1]) * 0.05;
+        camera.target[2] += (HOME_TARGET[2] - camera.target[2]) * 0.05;
+
+        const dist =
+            Math.abs(camera.target[0] - HOME_TARGET[0]) +
+            Math.abs(camera.target[1] - HOME_TARGET[1]) +
+            Math.abs(camera.target[2] - HOME_TARGET[2]);
+
+        if (dist < 0.05 && Math.abs(camera.distance - HOME_DISTANCE) < 0.5) {
+            isReturningHome = false;
+        }
+    }
+}
+
+window.__updateInteraction = updateCamera;
+
 document.addEventListener("DOMContentLoaded", () => {
 
     const canvas = document.getElementById("glcanvas");
@@ -8,16 +58,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let isDragging = false;
     let lastMouseX = 0;
-    let selectedPlanet = null;
-    let cameraTarget = null;
-    let isMovingTowardsPlanet = false;
-    let targetCameraPosition = null;
-
     if (infoClose) {
         infoClose.addEventListener("click", () => {
             infoPanel.style.display = "none";
             selectedPlanet = null;
-            cameraTarget = null;
+            isMovingTowardsPlanet = false;
+            isReturningHome = true;
         });
     }
 
@@ -43,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     canvas.addEventListener("mousemove", e => {
         if (isDragging) {
-            cameraAngle += (e.clientX - lastMouseX) * 0.01;
+            camera.angle += (e.clientX - lastMouseX) * 0.01;
             lastMouseX = e.clientX;
         }
     });
@@ -53,13 +99,19 @@ document.addEventListener("DOMContentLoaded", () => {
     // -------------------------
     // Project 3D position to NDC
     function projectToNDC(worldPos) {
-        const camX = Math.sin(cameraAngle) * cameraDistance;
-        const camZ = Math.cos(cameraAngle) * cameraDistance;
-        const camY = 5;
-        const view = lookAt([camX, camY, camZ], cameraTarget || [0, 0, 0], [0, 1, 0]);
+        const camX = Math.sin(camera.angle) * camera.distance;
+        const camZ = Math.cos(camera.angle) * camera.distance;
+        const camY = camera.height;
+
+        const view = lookAt([camX, camY, camZ], camera.target, [0, 1, 0]);
         const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
         const proj = perspective(Math.PI / 4, aspect, 0.1, 200.0);
-        const v = multiplyMat4Vec4(proj, multiplyMat4Vec4(view, [worldPos[0], worldPos[1], worldPos[2], 1]));
+
+        const v = multiplyMat4Vec4(
+            proj,
+            multiplyMat4Vec4(view, [worldPos[0], worldPos[1], worldPos[2], 1])
+        );
+
         if (Math.abs(v[3]) < 1e-6) return null;
         return [v[0] / v[3], v[1] / v[3], v[2] / v[3]];
     }
@@ -108,47 +160,21 @@ document.addEventListener("DOMContentLoaded", () => {
         if (closest) {
             selectedPlanet = closest;
             cameraTarget = closest.center;
-            targetCameraPosition = [
-                cameraTarget[0],
-                cameraTarget[1] + 5,
-                cameraTarget[2] + closest.radius * 2
-            ];
+            targetCameraPosition = [cameraTarget[0], cameraTarget[1] + 5, cameraTarget[2] + closest.radius * 2];
             isMovingTowardsPlanet = true;
             showPlanetInfo(closest);
         }
-    });
+        // if (closest) {
+        //     selectedPlanet = closest;
+        //     isMovingTowardsPlanet = true;
+        //     showPlanetInfo(closest);
+        // }
+});
 
     canvas.addEventListener("wheel", e => {
         e.preventDefault();
         const zoomFactor = e.deltaY > 0 ? 1.05 : 0.95;
-        cameraDistance *= zoomFactor;
-        cameraDistance = Math.max(5, Math.min(cameraDistance, 120));
+        camera.distance *= zoomFactor;
+        camera.distance = Math.max(5, Math.min(camera.distance, 120));
     }, { passive: false });
-
-    // -------------------------
-    // Animate camera toward selected planet
-    function updateCamera() {
-        if (isMovingTowardsPlanet && targetCameraPosition) {
-            camera.position[0] += (targetCameraPosition[0] - camera.position[0]) * 0.03;
-            camera.position[1] += (targetCameraPosition[1] - camera.position[1]) * 0.03;
-            camera.position[2] += (targetCameraPosition[2] - camera.position[2]) * 0.03;
-
-            const dist = Math.sqrt(
-                Math.pow(camera.position[0] - targetCameraPosition[0], 2) +
-                Math.pow(camera.position[1] - targetCameraPosition[1], 2) +
-                Math.pow(camera.position[2] - targetCameraPosition[2], 2)
-            );
-            if (dist < 0.5) {
-                isMovingTowardsPlanet = false;
-            }
-        }
-    }
-
-    // Call updateCamera inside your main animate loop
-    // function animate() {
-    //     updateCamera();
-    //     requestAnimationFrame(animate);
-    //     renderer.render(...);
-    // }
-
 });
