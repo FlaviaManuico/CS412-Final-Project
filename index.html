@@ -79,6 +79,32 @@
 <body>
     <canvas id="glcanvas" style="width: 100vw; height: 100vh; display: block;"></canvas>
 
+
+    <button id="cockpit-toggle" 
+        style="
+          position:absolute;
+          top:10px;
+          left:10px;
+          z-index:100;
+          padding:8px 12px;
+          background:#1a1a2e;
+          color:#0ff;
+          border-radius:6px;
+          border:1px solid #0ff;
+          cursor:pointer;
+          font-family: Arial, sans-serif;
+        ">
+  Enter Cockpit 
+</button>
+
+    <!-- <div id="cockpit-controls" class="ui-panel" style="display:none;">
+        <h2>COCKPIT CONTROLS</h2>
+        <p><strong>WASD</strong> – Move Forward/Back/Left/Right</p>
+        <p><strong>SPACE</strong> – Move Up</p>
+        <p><strong>SHIFT</strong> – Move Down</p>
+        <p><strong>← →</strong> – Rotate Ship</p>
+    </div> -->
+
     <!-- Planet Info Panel -->
     <div id="planet-info" style="
         position: absolute;
@@ -120,6 +146,15 @@
         font-family: Arial, sans-serif;
         z-index: 100;
     ">Add Asteroids 🚀</button>
+
+    <div id="cockpit-window-frame">
+        <div class="cockpit-ring"></div>
+    </div>
+
+    <div id="cockpit-joystick">
+        <div id="joystick-base"></div>
+        <div id="joystick-stick"></div>
+    </div>
 
     <!-- Scripts -->
     <script src="js/planets.js"></script>

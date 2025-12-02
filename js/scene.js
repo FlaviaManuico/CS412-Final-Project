@@ -16,8 +16,14 @@ let camera = {
     angle: 0,
     distance: 35,
     target: [0, 0, 0],
-    height: 5 ,
-    cabinOffset: [0, 1.5, -2] // spaceship cockpit offseT
+    height: 5
+};
+
+window.cockpit = {
+    enabled: false,
+    position: [0, 5, 35],
+    yaw: 0,
+    pitch: 0
 };
 
 // Planet textures storage (keyed by texture URL or custom key)
@@ -280,10 +286,38 @@ function drawScene(){
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     angle += 0.01 * animationSpeed;
 
-    const camX = Math.sin(camera.angle) * camera.distance;
-    const camZ = Math.cos(camera.angle) * camera.distance;
-    const camY = camera.height;
-    const view = lookAt([camX, camY, camZ], camera.target, [0,1,0]);
+    let eye, target;
+
+    if (window.cockpit && window.cockpit.enabled) {
+        const cp = window.cockpit;
+
+        const cosPitch = Math.cos(cp.pitch);
+        const sinPitch = Math.sin(cp.pitch);
+        const cosYaw = Math.cos(cp.yaw);
+        const sinYaw = Math.sin(cp.yaw);
+
+        const forward = [
+            sinYaw * cosPitch,
+            sinPitch,
+            cosYaw * cosPitch
+        ];
+
+        eye = cp.position;
+        target = [
+            eye[0] + forward[0],
+            eye[1] + forward[1],
+            eye[2] + forward[2]
+        ];
+    } else {
+        const camX = Math.sin(camera.angle) * camera.distance;
+        const camZ = Math.cos(camera.angle) * camera.distance;
+        const camY = camera.height;
+        eye = [camX, camY, camZ];
+        target = camera.target;
+    }
+
+    const view = lookAt(eye, target, [0, 1, 0]);
+
     const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
     const proj = perspective(Math.PI/4, aspect, 0.1, 200.0);
     const lightPos = [0,0,0];

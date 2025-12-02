@@ -7,15 +7,14 @@ const Interaction = (() => {
     // State
     let selectedPlanet = null;
     let isMovingTowardsPlanet = false;
-    let targetCameraPosition = null;
 
     const HOME_TARGET = [0, 0, 0];
     const HOME_DISTANCE = 35;
+    const HOME_HEIGHT = 5;
     let isReturningHome = false;
 
     let cockpitMode = false;
     let cockpitShipIndex = 0;
-    let cockpitHUD = null;
 
     let isDragging = false;
     let lastMouseX = 0;
@@ -28,8 +27,8 @@ const Interaction = (() => {
         up: false, down: false,
         yawLeft: false, yawRight: false
     };
-    const cockpitSpeed = 0.2;
-    const rotationSpeed = 0.03;
+    const cockpitSpeed = 0.15;
+    const rotationSpeed = 0.02;
 
     // -------------------------
     // Helpers
@@ -94,13 +93,27 @@ const Interaction = (() => {
             if (cockpitControls.yawLeft) ship.angle -= rotationSpeed;
             if (cockpitControls.yawRight) ship.angle += rotationSpeed;
 
-            const forwardVec = [Math.sin(ship.angle), 0, Math.cos(ship.angle)];
-            const rightVec   = [Math.cos(ship.angle), 0, -Math.sin(ship.angle)];
+            const forwardX = Math.sin(ship.angle);
+            const forwardZ = Math.cos(ship.angle);
+            const rightX = Math.cos(ship.angle);
+            const rightZ = -Math.sin(ship.angle);
 
-            if (cockpitControls.forward)  ship.position = ship.position.map((v,i)=>v + forwardVec[i]*cockpitSpeed);
-            if (cockpitControls.backward) ship.position = ship.position.map((v,i)=>v - forwardVec[i]*cockpitSpeed);
-            if (cockpitControls.left)     ship.position = ship.position.map((v,i)=>v - rightVec[i]*cockpitSpeed);
-            if (cockpitControls.right)    ship.position = ship.position.map((v,i)=>v + rightVec[i]*cockpitSpeed);
+            if (cockpitControls.forward) {
+                ship.position[0] += forwardX * cockpitSpeed;
+                ship.position[2] += forwardZ * cockpitSpeed;
+            }
+            if (cockpitControls.backward) {
+                ship.position[0] -= forwardX * cockpitSpeed;
+                ship.position[2] -= forwardZ * cockpitSpeed;
+            }
+            if (cockpitControls.left) {
+                ship.position[0] -= rightX * cockpitSpeed;
+                ship.position[2] -= rightZ * cockpitSpeed;
+            }
+            if (cockpitControls.right) {
+                ship.position[0] += rightX * cockpitSpeed;
+                ship.position[2] += rightZ * cockpitSpeed;
+            }
             if (cockpitControls.up)       ship.position[1] += cockpitSpeed;
             if (cockpitControls.down)     ship.position[1] -= cockpitSpeed;
 
@@ -110,107 +123,273 @@ const Interaction = (() => {
             m = mat4RotateY(m, ship.angle);
             m = mat4Scale(m, [ship.size, ship.size, ship.size]);
 
-            const localCockpit = [0, 0.12, 0.6, 1];
-            const world = multiplyMat4Vec4(m, localCockpit);
-            const cockpitPos = [world[0]/world[3], world[1]/world[3], world[2]/world[3]];
+            const localCam = [...cockpitOffset, 1];
+            const worldCam = multiplyMat4Vec4(m, localCam);
+            const camPos = [worldCam[0]/worldCam[3], worldCam[1]/worldCam[3], worldCam[2]/worldCam[3]];
 
             const forward = [m[8], m[9], m[10]];
             const len = Math.hypot(...forward) || 1;
             const forwardNorm = forward.map(f => f/len);
 
-            const lookAhead = 3.0;
-            const cockpitLook = forwardNorm.map((f,i)=>cockpitPos[i]+f*lookAhead);
+            const lookDistance = 5.0;
+            const lookTarget = forwardNorm.map((f, i) => camPos[i] + f * lookDistance);
 
-            camera.target = lerpVec3(camera.target, cockpitLook, 0.18);
-            camera.angle = lerp(camera.angle, Math.atan2(forwardNorm[0], forwardNorm[2]), 0.18);
-            camera.distance = lerp(camera.distance, 0.2, 0.18);
-            camera.target[1] = lerp(camera.target[1], cockpitPos[1]+0.05, 0.12);
+            camera.target = lerpVec3(camera.target, lookTarget, 0.15);
+            
+            const targetAngle = Math.atan2(forwardNorm[0], forwardNorm[2]);
+            camera.angle = lerp(camera.angle, targetAngle, 0.15);
+            
+            camera.distance = lerp(camera.distance, 0.1, 0.15);
+            camera.height = lerp(camera.height, camPos[1], 0.15);
             return; // skip normal camera
         }
 
         // --- Move toward selected planet ---
         if (isMovingTowardsPlanet && selectedPlanet) {
             const targetDist = selectedPlanet.radius * 4;
-            camera.distance += (targetDist - camera.distance)*0.05;
-            camera.target = camera.target.map((v,i)=>v + (selectedPlanet.center[i]-v)*0.05);
+            camera.distance += (targetDist - camera.distance) * 0.05;
+            camera.target = camera.target.map((v, i) => v + (selectedPlanet.center[i] - v) * 0.05);
 
-            const dist = camera.target.reduce((acc,v,i)=>acc+Math.abs(v-selectedPlanet.center[i]),0);
-            if (dist<0.05 && Math.abs(camera.distance-targetDist)<0.5) isMovingTowardsPlanet=false;
+            const dist = camera.target.reduce((acc, v, i) => acc + Math.abs(v - selectedPlanet.center[i]), 0);
+            if (dist < 0.05 && Math.abs(camera.distance - targetDist) < 0.5) {
+                isMovingTowardsPlanet = false;
+            }
             return;
         }
 
         // --- Return home ---
         if (isReturningHome) {
-            camera.distance += (HOME_DISTANCE - camera.distance)*0.05;
-            camera.target = camera.target.map((v,i)=>v + (HOME_TARGET[i]-v)*0.05);
-            const dist = camera.target.reduce((acc,v,i)=>acc+Math.abs(v-HOME_TARGET[i]),0);
-            if (dist<0.05 && Math.abs(camera.distance-HOME_DISTANCE)<0.5) isReturningHome=false;
+            camera.distance += (HOME_DISTANCE - camera.distance) * 0.05;
+            camera.height += (HOME_HEIGHT - camera.height) * 0.05;
+            camera.target = camera.target.map((v, i) => v + (HOME_TARGET[i] - v) * 0.05);
+            
+            const distToHome = camera.target.reduce((acc, v, i) => acc + Math.abs(v - HOME_TARGET[i]), 0);
+            const distDiff = Math.abs(camera.distance - HOME_DISTANCE);
+            const heightDiff = Math.abs(camera.height - HOME_HEIGHT);
+            
+            if (distToHome < 0.1 && distDiff < 0.5 && heightDiff < 0.1) {
+                isReturningHome = false;
+                camera.target = [...HOME_TARGET];
+                camera.distance = HOME_DISTANCE;
+                camera.height = HOME_HEIGHT;
+            }
         }
     }
 
     // -------------------------
     // Keyboard controls
-    window.addEventListener("keydown", e => {
-        if (!cockpitMode) return;
-        switch(e.code){
-            case "KeyW": cockpitControls.forward=true; break;
-            case "KeyS": cockpitControls.backward=true; break;
-            case "KeyA": cockpitControls.left=true; break;
-            case "KeyD": cockpitControls.right=true; break;
-            case "Space": cockpitControls.up=true; break;
-            case "ShiftLeft": cockpitControls.down=true; break;
-            case "ArrowLeft": cockpitControls.yawLeft=true; break;
-            case "ArrowRight": cockpitControls.yawRight=true; break;
-        }
+    const cockpitKeys = {};
+    window.cockpitKeys = cockpitKeys;
+
+    let joystickPitch = 0;
+    let joystickYaw = 0;
+
+    let joystickStickEl = null;
+    let cockpitWindowEl = null;
+    let cockpitJoystickEl = null;
+
+
+    document.addEventListener("keydown", (e) => {
+        cockpitKeys[e.code] = true;
     });
 
+    document.addEventListener("keyup", (e) => {
+        cockpitKeys[e.code] = false;
+    });
+
+    function moveVec(target, dir, s) {
+        target[0] += dir[0] * s;
+        target[1] += dir[1] * s;
+        target[2] += dir[2] * s;
+    }
+
+    function checkCollisions(newPosition) {
+        const sunRadius = 2.5;
+        const distToSun = Math.sqrt(
+            newPosition[0] * newPosition[0] +
+            newPosition[1] * newPosition[1] +
+            newPosition[2] * newPosition[2]
+        );
+        if (distToSun < sunRadius + 1.5) {
+            return true;
+        }
+
+        for (const planet of planetData) {
+            if (!planet.center) continue;
+            
+            const dx = newPosition[0] - planet.center[0];
+            const dy = newPosition[1] - planet.center[1];
+            const dz = newPosition[2] - planet.center[2];
+            const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            
+            if (distance < planet.radius + 1.0) {
+                return true;
+            }
+
+            if (planet.moons) {
+                for (const moon of planet.moons) {
+                    if (!moon.position) continue;
+                    const mdx = newPosition[0] - moon.position[0];
+                    const mdy = newPosition[1] - moon.position[1];
+                    const mdz = newPosition[2] - moon.position[2];
+                    const mDistance = Math.sqrt(mdx * mdx + mdy * mdy + mdz * mdz);
+                    
+                    if (mDistance < moon.radius + 0.5) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    function updateCockpit(dt) {
+        const cockpit = window.cockpit;
+        if (!cockpit || !cockpit.enabled) return;
+
+        const moveSpeed = 10 * dt;
+        const rotSpeed = 1.5 * dt;
+
+        if (cockpitKeys["ArrowLeft"]){
+            cockpit.yaw += rotSpeed;
+        }
+        if (cockpitKeys["ArrowRight"]){
+            cockpit.yaw -= rotSpeed;
+        }
+        if (cockpitKeys["ArrowUp"]){
+            cockpit.pitch = Math.min(cockpit.pitch + rotSpeed,  Math.PI / 2 - 0.1);
+        }
+        if (cockpitKeys["ArrowDown"]){
+            cockpit.pitch = Math.max(cockpit.pitch - rotSpeed, -Math.PI / 2 + 0.1);
+        }
+
+        const cosPitch = Math.cos(cockpit.pitch);
+        const sinPitch = Math.sin(cockpit.pitch);
+        const cosYaw = Math.cos(cockpit.yaw);
+        const sinYaw = Math.sin(cockpit.yaw);
+
+        const forward = [
+            sinYaw * cosPitch,
+            sinPitch,
+            cosYaw * cosPitch
+        ];
+        const right = [cosYaw, 0, -sinYaw];
+        const up    = [0, 1, 0];
+
+        const oldPosition = [...cockpit.position];
+
+        if (cockpitKeys["KeyW"]) moveVec(cockpit.position, forward,  moveSpeed);
+        if (cockpitKeys["KeyS"]) moveVec(cockpit.position, forward, -moveSpeed);
+        if (cockpitKeys["KeyA"]) moveVec(cockpit.position, right,   -moveSpeed);
+        if (cockpitKeys["KeyD"]) moveVec(cockpit.position, right,    moveSpeed);
+        if (cockpitKeys["Space"]) {
+            moveVec(cockpit.position, up,  moveSpeed);
+        }
+        if (cockpitKeys["ShiftLeft"] || cockpitKeys["ShiftRight"]) {
+            moveVec(cockpit.position, up, -moveSpeed);
+        }
+
+                // === Actualizar palanca visual ===
+        let targetPitch = 0;
+        let targetYaw   = 0;
+
+        if (cockpitKeys["KeyW"]) targetPitch -= 20; // hacia adelante
+        if (cockpitKeys["KeyS"]) targetPitch += 20; // hacia atrás
+        if (cockpitKeys["KeyA"]) targetYaw   -= 20; // izquierda
+        if (cockpitKeys["KeyD"]) targetYaw   += 20; // derecha
+
+        // Interpolación suave
+        const lerpFactor = 6 * dt;
+        joystickPitch += (targetPitch - joystickPitch) * lerpFactor;
+        joystickYaw   += (targetYaw   - joystickYaw)   * lerpFactor;
+
+        if (joystickStickEl) {
+            // pequeño “tilt” 2D para que se vea inclinado
+            joystickStickEl.style.transform =
+                `translateX(-50%) rotate(${joystickYaw}deg) translateY(${joystickPitch * 0.3}px)`;
+        }
+
+
+        if (checkCollisions(cockpit.position)) {
+            cockpit.position = oldPosition;
+        }
+    }
 
     // -------------------------
     // DOM & mouse
     document.addEventListener("DOMContentLoaded", () => {
         const canvas = document.getElementById("glcanvas");
         const asteroidButton = document.getElementById("add-asteroids");
+        const infoPanel = document.getElementById("planet-info");
+        const infoClose = document.getElementById("info-close");
 
-        // Cockpit button
-        let cockpitBtn = document.getElementById("cockpitBtn");
-        if (!cockpitBtn) {
-            cockpitBtn = document.createElement("button");
-            cockpitBtn.id = "cockpitBtn";
-            cockpitBtn.textContent = "Enter Cockpit View";
-            Object.assign(cockpitBtn.style, {
-                position:"absolute", top:"10px", left:"10px", zIndex:200,
-                padding:"8px 10px", background:"#222", color:"#fff", border:"none", borderRadius:"6px"
+        const cockpitBtn = document.getElementById("cockpit-toggle");
+        const cockpitHelp = document.getElementById("cockpit-controls");
+
+        cockpitWindowEl  = document.getElementById("cockpit-window-frame");
+        cockpitJoystickEl = document.getElementById("cockpit-joystick");
+        joystickStickEl   = document.getElementById("joystick-stick");
+
+
+        if (infoClose) {
+            infoClose.addEventListener("click", () => {
+                infoPanel.style.display = "none";
+                selectedPlanet = null;
+                isMovingTowardsPlanet = false;
+                isReturningHome = true;
             });
-            document.body.appendChild(cockpitBtn);
         }
 
-        // Cockpit HUD
-        cockpitHUD = document.getElementById("cockpitHUD");
-        if (!cockpitHUD) {
-            cockpitHUD = document.createElement("div");
-            cockpitHUD.id = "cockpitHUD";
-            Object.assign(cockpitHUD.style, {
-                position:"absolute", left:"50%", top:"50%",
-                transform:"translate(-50%,-50%)",
-                zIndex:199, pointerEvents:"none", display:"none"
-            });
-            cockpitHUD.innerHTML = `<div style="width:2px;height:20px;background:#0ff;margin:-10px auto 0 auto;"></div>
-                                    <div style="height:2px;width:20px;background:#0ff;margin:9px auto 0 auto;"></div>`;
-            document.body.appendChild(cockpitHUD);
-        }
+    if (cockpitBtn) {
+            cockpitBtn.addEventListener("click", () => {
+                const cockpit = window.cockpit;
+                const wasEnabled = cockpit.enabled;
+                cockpit.enabled = !cockpit.enabled;
 
-        cockpitBtn.addEventListener("click", ()=>{
-            cockpitMode = !cockpitMode;
-            cockpitHUD.style.display = cockpitMode?"block":"none";
-            cockpitBtn.textContent = cockpitMode?"Exit Cockpit View":"Enter Cockpit View";
-            if(!cockpitMode) camera.distance = Math.max(camera.distance,6.0);
-        });
+                isMovingTowardsPlanet = false;
+                selectedPlanet = null;
+
+                cockpitBtn.textContent = cockpit.enabled ? "Exit Cockpit" : "Enter Cockpit";
+
+                if (cockpitWindowEl) {
+                    cockpitWindowEl.style.display = cockpit.enabled ? "block" : "none";
+                }
+                if (cockpitJoystickEl) {
+                    cockpitJoystickEl.style.display = cockpit.enabled ? "block" : "none";
+                }
+
+
+                if (cockpitHelp) {
+                    cockpitHelp.style.display = cockpit.enabled ? "block" : "none";
+                }
+
+                if (cockpit.enabled && !wasEnabled) {
+                    const camX = Math.sin(camera.angle) * camera.distance;
+                    const camZ = Math.cos(camera.angle) * camera.distance;
+                    const camY = camera.height;
+                    
+                    cockpit.position = [camX, camY, camZ];
+                    cockpit.yaw = camera.angle + Math.PI;
+                    cockpit.pitch = 0;
+                    cockpit.initialized = true;
+                    
+                    console.log("Cockpit activated at:", cockpit.position, "yaw:", cockpit.yaw);
+                } else if (!cockpit.enabled) {
+                    camera.target  = [0, 0, 0];
+                    camera.distance = 35;
+                    camera.angle    = 0;
+                    camera.height   = 5;
+                    cockpit.initialized = false;
+                }
+            });
+        }
 
         if (asteroidButton) asteroidButton.addEventListener("click", ()=>{ if(window.addAsteroids) window.addAsteroids(50); });
 
         // Mouse drag orbit
         canvas.addEventListener("mousedown", e=>{ if(!cockpitMode){ isDragging=true; lastMouseX=e.clientX; } });
-        canvas.addEventListener("mousemove", e=>{ if(isDragging) camera.angle+=(e.clientX-lastMouseX)*0.01; lastMouseX=e.clientX; });
+        canvas.addEventListener("mousemove", e=>{ if(isDragging && !cockpitMode) camera.angle+=(e.clientX-lastMouseX)*0.01; lastMouseX=e.clientX; });
         window.addEventListener("mouseup", ()=>{ isDragging=false; });
 
         // Click to select planet
@@ -246,6 +425,7 @@ const Interaction = (() => {
         // Zoom
         canvas.addEventListener("wheel", e => {
             e.preventDefault();
+            if (cockpitMode) return;
             const zoomFactor = e.deltaY > 0 ? 1.05 : 0.95;
             camera.distance *= zoomFactor;
             camera.distance = Math.max(5, Math.min(camera.distance, 120));
@@ -254,11 +434,14 @@ const Interaction = (() => {
 
     return {
         updateCamera,
-        toggleCockpit: ()=>{ cockpitBtn && cockpitBtn.click(); },
-        cockpitMode: ()=>cockpitMode
+        updateCockpit,
+        getCockpitMode: () => cockpitMode
     };
 })();
 
-window.__updateInteraction = Interaction.updateCamera;
-window.toggleCockpit = Interaction.toggleCockpit;
-window.cockpitMode = Interaction.cockpitMode;
+window.__updateInteraction = function () {
+    const dt = 1 / 60; 
+    Interaction.updateCockpit(dt);
+    Interaction.updateCamera();
+};
+
