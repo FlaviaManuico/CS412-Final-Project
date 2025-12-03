@@ -78,7 +78,9 @@ function initAsteroids() {
             angle: Math.random() * Math.PI * 2,
             distance: inner + Math.random() * (outer - inner),
             speed: 0.001 + Math.random() * 0.002,
-            size: Math.random() * 0.1 + 0.05
+            size: Math.random() * 0.1 + 0.05,
+            // computed world position (for collision)
+            position: [0, 0, 0]
         });
     }
 }
@@ -89,7 +91,8 @@ function addAsteroids(count = 50) {
             angle: Math.random() * Math.PI * 2,
             distance: inner + Math.random() * (outer - inner),
             speed: 0.001 + Math.random() * 0.002,
-            size: Math.random() * 0.1 + 0.05
+            size: Math.random() * 0.1 + 0.05,
+            position: [0, 0, 0]
         });
     }
 }
@@ -97,25 +100,63 @@ window.addAsteroids = addAsteroids;
 
 // ===== Spaceships =====
 let spaceships = [];
+
 function initSpaceships() {
     spaceships = [];
     addSpaceships(3);
 }
+
 function addSpaceships(count = 1) {
     for (let i = 0; i < count; i++) {
+        const pos = [
+            (Math.random()-0.5)*30,
+            1 + Math.random()*4,
+            (Math.random()-0.5)*30
+        ];
+        const dirAngle = Math.random()*Math.PI*2;
+        const dir = [Math.cos(dirAngle), 0, Math.sin(dirAngle)];
+        const size = 1.2 + Math.random()*0.6;
         spaceships.push({
-            position: [
-                (Math.random()-0.5)*30,
-                1 + Math.random()*4,
-                (Math.random()-0.5)*30
-            ],
-            size: 1.5 + Math.random()*0.5,
-            speed: 0.01 + Math.random()*0.02,
-            angle: Math.random()*Math.PI*2
+            position: [...pos],          // current position
+            originalPosition: [...pos],  // starting position
+            size: size,
+            radius: size*0.7,            // collision radius
+            speed: 0.02 + Math.random()*0.03,
+            angle: Math.random()*Math.PI*2, // for spin/visual
+            dir: dir,
+            wanderTimer: Math.random()*3 + 1,
+            isHit: false,                // hit flag
+            hitTimer: 0                  // frames to stay hit
         });
     }
 }
 window.addSpaceships = addSpaceships;
+window.spaceships = spaceships;
+
+// ===== Collision check =====
+function checkSpaceshipCollisions() {
+    if(!window.redProjectiles) return;
+
+    redProjectiles.forEach(proj => {
+        spaceships.forEach(ship => {
+            if(ship.isHit) return; // already hit
+
+            const dx = ship.position[0] - proj.position[0];
+            const dy = ship.position[1] - proj.position[1];
+            const dz = ship.position[2] - proj.position[2];
+            const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+            if(dist < ship.radius + (proj.size||0.5)) {
+                // Hit detected
+                ship.isHit = true;
+                ship.hitTimer = 60;                  // frames to pause
+                ship.position = [...ship.originalPosition]; // reset pos
+                score = 0;                            // reset score
+                console.log("Hit ship! Score now 0.");
+            }
+        });
+    });
+}
 
 // ===== Spaceship mesh with engine flame =====
 function createSpaceship(gl){
@@ -309,7 +350,7 @@ function drawScene(){
             eye[2] + forward[2]
         ];
     } else {
-        const camX = Math.sin(camera.angle) * camera.distance;
+         const camX = Math.sin(camera.angle) * camera.distance;
         const camZ = Math.cos(camera.angle) * camera.distance;
         const camY = camera.height;
         eye = [camX, camY, camZ];
@@ -390,18 +431,33 @@ function drawScene(){
         }
     });
 
-    // Asteroids
+    // Asteroids (update positions for collision use)
     asteroids.forEach(a=>{
-        const x = Math.cos(a.angle+angle*a.speed)*a.distance;
-        const z = Math.sin(a.angle+angle*a.speed)*a.distance;
-        drawSphereInstance([x,0,z], a.size,[0.7,0.7,0.7], false, null);
+        a.angle += a.speed * 100 * 0.01; // animate
+        const x = Math.cos(a.angle)*a.distance;
+        const z = Math.sin(a.angle)*a.distance;
+        a.position = [x, 0, z];
+        drawSphereInstance(a.position, a.size,[0.7,0.7,0.7], false, null);
     });
+
+    // Red projectiles (if any)
+    if(window.redProjectiles && window.redProjectiles.length > 0){
+        window.redProjectiles.forEach(proj => {
+            drawSphereInstance(
+                proj.position,
+                proj.size || 0.5,
+                [1.0, 0.1, 0.0],
+                true,
+                null
+            );
+        });
+    }
 
     // Spaceships
     drawSpaceships(view, proj, lightPos);
 }
 
-// ===== Draw Spaceships (NEW modular function) =====
+// ===== Draw Spaceships (with hit color) =====
 function drawSpaceships(view, proj, lightPos){
     const locModel = gl.getUniformLocation(program,"uModel");
     const locView = gl.getUniformLocation(program,"uView");
@@ -412,49 +468,77 @@ function drawSpaceships(view, proj, lightPos){
     const locEmissive = gl.getUniformLocation(program,"uEmissive");
     const locUseTexture = gl.getUniformLocation(program,"useTexture");
 
-    spaceships.forEach(s=>{
-    s.angle += s.speed;
-    const x = s.position[0] + Math.cos(s.angle)*0.5;
-    const z = s.position[2] + Math.sin(s.angle)*0.5;
-    const y = s.position[1];
+    const moveFactor = 1.0;
 
-    gl.bindVertexArray(spaceshipMesh.vao);
-    let model = mat4Identity();
-    model = mat4Translate(model,[x,y,z]);
-    model = mat4RotateY(model,s.angle);
-    model = mat4Scale(model,[s.size,s.size,s.size]);
-    const normalMatrix = mat4Transpose(mat4Invert(model));
+    for (let s of spaceships) {
+        // --- Update movement ---
+        if(s.isHit && s.hitTimer > 0) {
+            s.hitTimer--;
+        } else if(s.isHit && s.hitTimer <= 0) {
+            s.isHit = false; // resume
+        } else {
+            s.wanderTimer -= 0.016 * moveFactor;
+            if(s.wanderTimer <= 0) {
+                const a = Math.random()*Math.PI*2;
+                s.dir = [Math.cos(a),0,Math.sin(a)];
+                s.wanderTimer = 1 + Math.random()*3;
+            }
+            s.position[0] += s.dir[0] * s.speed * 30 * 0.016 * moveFactor;
+            s.position[2] += s.dir[2] * s.speed * 30 * 0.016 * moveFactor;
 
-    gl.uniformMatrix4fv(locModel,false,model);
-    gl.uniformMatrix4fv(locView,false,view);
-    gl.uniformMatrix4fv(locProj,false,proj);
-    gl.uniformMatrix4fv(locNormal,false,normalMatrix);
-    gl.uniform3fv(locLight,lightPos);
-    gl.uniform3fv(locColor,[0.8,0.1,0.1]);
-    gl.uniform1f(locEmissive,0.0);
-    gl.uniform1i(locUseTexture,0);
+            const limit = 35;
+            if(s.position[0] > limit){ s.position[0]=limit; s.dir[0]*=-1;}
+            if(s.position[0] < -limit){ s.position[0]=-limit; s.dir[0]*=-1;}
+            if(s.position[2] > limit){ s.position[2]=limit; s.dir[2]*=-1;}
+            if(s.position[2] < -limit){ s.position[2]=-limit; s.dir[2]*=-1;}
+        }
 
-    gl.drawElements(gl.TRIANGLES, spaceshipMesh.count, gl.UNSIGNED_SHORT,0);
-    gl.bindVertexArray(null);
+        s.angle += 0.02 + s.speed*0.5;
 
-    // --- Draw dynamic flame ---
-    const flameScale = 0.8 + 0.2*Math.sin(angle*20); // pulse
-    let flameModel = mat4Identity();
-    flameModel = mat4Translate(flameModel,[x,y,z]);
-    flameModel = mat4RotateY(flameModel,s.angle);
-    flameModel = mat4Scale(flameModel,[s.size*flameScale,s.size*flameScale,s.size*flameScale]);
-    const flameNormal = mat4Transpose(mat4Invert(flameModel));
+        // --- Draw ship ---
+        const x = s.position[0], y = s.position[1], z = s.position[2];
+        gl.bindVertexArray(spaceshipMesh.vao);
 
-    gl.uniformMatrix4fv(locModel,false,flameModel);
-    gl.uniformMatrix4fv(locNormal,false,flameNormal);
-    gl.uniform3fv(locColor,[1,0.5 + 0.5*Math.random(),0]); // fiery colors
-    gl.uniform1f(locEmissive,1.0);
+        let model = mat4Identity();
+        model = mat4Translate(model,[x,y,z]);
+        model = mat4RotateY(model,s.angle);
+        model = mat4Scale(model,[s.size,s.size,s.size]);
+        const normalMatrix = mat4Transpose(mat4Invert(model));
 
-    gl.bindVertexArray(spaceshipMesh.vao);
-    gl.drawElements(gl.TRIANGLES, spaceshipMesh.count, gl.UNSIGNED_SHORT,0);
-    gl.bindVertexArray(null);
-});
+        gl.uniformMatrix4fv(locModel,false,model);
+        gl.uniformMatrix4fv(locView,false,view);
+        gl.uniformMatrix4fv(locProj,false,proj);
+        gl.uniformMatrix4fv(locNormal,false,normalMatrix);
+        gl.uniform3fv(locLight,lightPos);
+
+        // --- Color: red normally, yellow when hit ---
+        const color = s.isHit ? [1.0, 1.0, 0.0] : [0.8, 0.12, 0.12];
+        gl.uniform3fv(locColor,color);
+        gl.uniform1f(locEmissive,0.0);
+        gl.uniform1i(locUseTexture,0);
+
+        gl.drawElements(gl.TRIANGLES, spaceshipMesh.count, gl.UNSIGNED_SHORT,0);
+        gl.bindVertexArray(null);
+
+        // --- Engine flame ---
+        const flameScale = 0.9 + 0.2*Math.sin(angle*20 + (s.angle*4));
+        let flameModel = mat4Identity();
+        flameModel = mat4Translate(flameModel,[x,y,z]);
+        flameModel = mat4RotateY(flameModel,s.angle);
+        flameModel = mat4Scale(flameModel,[s.size*flameScale,s.size*flameScale,s.size*flameScale]);
+        const flameNormal = mat4Transpose(mat4Invert(flameModel));
+
+        gl.uniformMatrix4fv(locModel,false,flameModel);
+        gl.uniformMatrix4fv(locNormal,false,flameNormal);
+        gl.uniform3fv(locColor,[1,0.4,0]);
+        gl.uniform1f(locEmissive,1.0);
+
+        gl.bindVertexArray(spaceshipMesh.vao);
+        gl.drawElements(gl.TRIANGLES, spaceshipMesh.count, gl.UNSIGNED_SHORT,0);
+        gl.bindVertexArray(null);
+    }
 }
+
 // ===== Draw ring helper =====
 function drawRing(center, planetScale, ring){
     const segments = 64;
@@ -479,8 +563,6 @@ function drawRing(center, planetScale, ring){
 
 // ===== Draw a single textured triangle =====
 function drawTriangle(v1,v2,v3,color,texKey){
-    // For simplicity, create temporary VAO for one triangle
-    // Bind texture if available
     if(texKey && textures[texKey] && textures[texKey].loaded){
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D,textures[texKey].texture);

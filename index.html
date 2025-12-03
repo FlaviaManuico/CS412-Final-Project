@@ -155,6 +155,39 @@
         <div id="joystick-base"></div>
         <div id="joystick-stick"></div>
     </div>
+    <!-- Score Board -->
+<div id="score-board" style="
+    position: absolute;
+    top: 90px;
+    left: 10px;
+    z-index: 100;
+    padding: 8px 12px;
+    background: #1a1a2e;
+    color: #0f0;
+    border-radius: 6px;
+    border: 1px solid #0f0;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+">
+    Score: 0
+</div>
+<!-- Enter Game Mode Button -->
+<button id="game-mode-toggle" style="
+    position: absolute;
+    top: 50px;
+    left: 10px;
+    z-index: 100;
+    padding: 8px 12px;
+    background: #1a1a2e;
+    color: #0ff;
+    border-radius: 6px;
+    border: 1px solid #0ff;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+" disabled>
+  Enter Game Mode
+</button>
+
 
     <!-- Scripts -->
     <script src="js/planets.js"></script>
