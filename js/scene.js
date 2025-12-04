@@ -68,6 +68,9 @@ function initStars(){
 
 // ===== Asteroids =====
 let asteroids = [];
+let gameAsteroids = [];
+let gameSpeedMultiplier = 1.0;
+
 function initAsteroids() {
     asteroids = [];
     const count = 500, inner = 12, outer = 16;
@@ -77,35 +80,49 @@ function initAsteroids() {
             distance: inner + Math.random() * (outer - inner),
             speed: 0.001 + Math.random() * 0.002,
             size: Math.random() * 0.1 + 0.05,
-            position: [0,0,0],
-            // New game-mode properties
-            x: (Math.random()-0.5)*30,
-            y: (Math.random()-0.5)*10 + 2,
-            z: -50 - Math.random()*50,
-            zVelocity: 0.2 + Math.random()*0.1
+            position: [0, 0, 0]
+        });
+    }
+}
+
+function initGameAsteroids() {
+    gameAsteroids = [];
+    gameSpeedMultiplier = 1.0;
+    const count = 12;
+    
+    for (let i = 0; i < count; i++) {
+        gameAsteroids.push({
+            x: (Math.random() - 0.5) * 60,
+            y: (Math.random() - 0.5) * 25 + 2,
+            z: -40 - (i * 30) - Math.random() * 50,
+            size: 0.3 + Math.random() * 0.4,
+            baseVelocity: 0.10 + Math.random() * 0.08,
+            position: [0, 0, 0]
         });
     }
 }
 
 function addAsteroids(count = 50) {
-    const inner = 12, outer = 16;
-    for (let i = 0; i < count; i++) {
-        if(window.cockpit.enabled){
-            const posZ = Math.random() * -50 - 10;
-            asteroids.push({
-                x: (Math.random()-0.5)*30,
-                y: (Math.random()-0.5)*10 + 2,
-                z: posZ,
-                size: Math.random()*0.2 + 0.05,
-                zVelocity: 0.3 + Math.random()*0.2
+    if(window.cockpit && window.cockpit.enabled && gameModeActive) {
+        for (let i = 0; i < Math.min(count, 5); i++) {
+            gameAsteroids.push({
+                x: (Math.random() - 0.5) * 60,
+                y: (Math.random() - 0.5) * 25 + 2,
+                z: -40 - Math.random() * 200,
+                size: 0.3 + Math.random() * 0.4,
+                baseVelocity: 0.10 + Math.random() * 0.08,
+                position: [0, 0, 0]
             });
-        } else {
+        }
+    } else {
+        const inner = 12, outer = 16;
+        for (let i = 0; i < count; i++) {
             asteroids.push({
                 angle: Math.random() * Math.PI * 2,
                 distance: inner + Math.random() * (outer - inner),
                 speed: 0.001 + Math.random() * 0.002,
                 size: Math.random() * 0.1 + 0.05,
-                position: [0,0,0]
+                position: [0, 0, 0]
             });
         }
     }
@@ -338,6 +355,7 @@ function initScene(canvas){
 
     initStars();
     initAsteroids();
+    initGameAsteroids();
     initSpaceships();
 
     planetData.forEach(p=>{
@@ -510,23 +528,29 @@ planetData.forEach(p => {
 });
 
     // --- Asteroids ---
-    asteroids.forEach(a=>{
-        if(window.cockpit.enabled){
-            a.z += a.zVelocity;
-            if(a.z > window.cockpit.position[2]){
-                a.z = -50 - Math.random()*50;
-                a.x = (Math.random()-0.5)*30;
-                a.y = (Math.random()-0.5)*10 + 2;
-            }
-            a.position = [a.x, a.y, a.z];
-        } else {
-            a.angle += a.speed*100*0.01;
-            const x = Math.cos(a.angle) * a.distance;
-            const z = Math.sin(a.angle) * a.distance;
-            a.position = [x, 0, z];
-        }
-        drawSphereInstance(a.position, a.size, [0.7,0.7,0.7], false, null);
+    asteroids.forEach(a => {
+        a.angle += a.speed * 100 * 0.01;
+        const x = Math.cos(a.angle) * a.distance;
+        const z = Math.sin(a.angle) * a.distance;
+        a.position = [x, 0, z];
+        drawSphereInstance(a.position, a.size, [0.7, 0.7, 0.7], false, null);
     });
+
+    if(window.cockpit && window.cockpit.enabled && gameModeActive) {
+        gameAsteroids.forEach(a => {
+            const currentVelocity = a.baseVelocity * gameSpeedMultiplier;
+            a.z += currentVelocity;
+            const playerZ = window.cockpit.position[2];
+            if(a.z > playerZ + 20) {
+                a.z = playerZ - 300 - Math.random() * 100;
+                a.x = (Math.random() - 0.5) * 60;
+                a.y = (Math.random() - 0.5) * 25 + 2;
+            }
+            
+            a.position = [a.x, a.y, a.z];
+            drawSphereInstance(a.position, a.size, [0.9, 0.5, 0.3], false, null);
+        });
+    }
 
     // --- Red projectiles ---
     if(window.redProjectiles){

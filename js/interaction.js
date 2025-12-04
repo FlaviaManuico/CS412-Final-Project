@@ -3,6 +3,8 @@
 
 let score = 0; // Global score
 let gameModeActive = false; // Game mode flag
+let gameTime = 0; 
+let isGameOver = false;
 
 const Interaction = (() => {
 
@@ -208,8 +210,8 @@ const Interaction = (() => {
 
     // Update planet & moon positions every frame
     for (const planet of planetData) {
-        if (!planet.mesh) continue;
-        planet.center = [planet.mesh.position.x, planet.mesh.position.y, planet.mesh.position.z];
+        if (!planet.center) continue;
+        // planet.center = [planet.mesh.position.x, planet.mesh.position.y, planet.mesh.position.z];
 
         // Planet collision
         if (Math.hypot(newPos[0]-planet.center[0], newPos[1]-planet.center[1], newPos[2]-planet.center[2]) < planet.radius + 1.0) return true;
@@ -250,7 +252,7 @@ const Interaction = (() => {
                 const dy = newPos[1] - a.position[1];
                 const dz = newPos[2] - a.position[2];
                 const distance = Math.hypot(dx, dy, dz);
-                const hitRadius = (a.size || 0.1) + 0.6;
+                const hitRadius = (a.size || 0.3) + 0.8;
                 if (distance < hitRadius) {
                     onHitObstacle("asteroid", a);
                     return true;
@@ -287,9 +289,14 @@ const Interaction = (() => {
     }
     
     // Update cockpit with collisions & scoring
-function updateCockpit(dt) {
-    const cockpit = window.cockpit;
-    if (!cockpit || !cockpit.enabled) return;
+    function updateCockpit(dt) {
+        const cockpit = window.cockpit;
+        if (!cockpit || !cockpit.enabled) return;
+
+        if(gameModeActive) {
+            gameTime += dt;
+            window.gameSpeedMultiplier = 1.0 + Math.floor(window.gameTime / 5.0) * 0.2
+        }
 
     // Rotation
     const rotSpeed = 1.5*dt;
@@ -334,7 +341,11 @@ function updateCockpit(dt) {
     if(checkCollisions(cockpit.position)){
         cockpit.position = oldPos; // revert movement
     } else {
-        if(gameModeActive) score += dt * 1.0;
+        // if(gameModeActive) score += dt * 1.0;
+        if(gameModeActive) {
+            const speedBonus = gameSpeedMultiplier || 1.0;
+            score += dt * 0.5 * speedBonus;
+        }
     }
 
     // Update score UI
