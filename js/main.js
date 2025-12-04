@@ -10,6 +10,7 @@ function loop(time) {
         window.__updateInteraction(dt);
     }
     drawScene();
+    initOrbitRings();
     requestAnimationFrame(loop);
 }
 

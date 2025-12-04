@@ -6,8 +6,6 @@
 let gl, program, sphere;
 let angle = 0;
 let animationSpeed = 1.0;
-
-// Camera
 // let cameraAngle = 0;
 // let cameraDistance = 35;
 // let cameraTarget = null;
@@ -52,10 +50,10 @@ const planetData = [
     {name:"Saturn", radius:1.9, distance:17, speed:0.03, color:[0.9,0.8,0.6], texture:"assets/texture/saturn.jpg",
      info:{realRadius:"58,232 km", tilt:"26.73°", rotationPeriod:"10.7 hours", orbitPeriod:"29.5 Earth years", distance:"1.4 billion km", moons:146, description:"Distinguished by its extensive ring system, the second-largest planet in our solar system."}},
     
-    {name:"Uranus", radius:1.0, distance:21, speed:0.01, color:[0.5,0.8,0.9], texture:"assets/texture/uranus.jpg",
+    {name:"Uranus", radius:1.0, distance:23, speed:0.01, color:[0.5,0.8,0.9], texture:"assets/texture/uranus.jpg",
      info:{realRadius:"25,362 km", tilt:"97.77°", rotationPeriod:"17.2 hours", orbitPeriod:"84 Earth years", distance:"2.87 billion km", moons:27, description:"Known for its tilted axis and faint rings."}},
     
-    {name:"Neptune", radius:0.98, distance:25, speed:0.006, color:[0.3,0.4,0.9], texture:"assets/texture/neptune.jpg",
+    {name:"Neptune", radius:0.98, distance:30, speed:0.006, color:[0.3,0.4,0.9], texture:"assets/texture/neptune.jpg",
      info:{realRadius:"24,622 km", tilt:"28.32°", rotationPeriod:"16.1 hours", orbitPeriod:"165 Earth years", distance:"4.5 billion km", moons:14, description:"The farthest planet from the Sun, known for strong winds and deep blue color."}}
 ];
 
@@ -114,6 +112,42 @@ function addAsteroids(count = 50) {
 }
 window.addAsteroids = addAsteroids;
 
+// ===== Orbit Rings =====
+let orbitRingVAOs = []; // global array
+function initOrbitRings() {
+    orbitRingVAOs = [];
+    planetData.forEach((p, idx) => {
+        if (!p.distance) return;
+        const segments = 128;
+        const positions = [];
+        const cosI = Math.cos(p.inclination || 0);
+        const sinI = Math.sin(p.inclination || 0);
+
+        // Slightly reduce first ring radius
+        const ringRadius = idx === 0 ? p.distance * 0.85 : p.distance; // first planet closer
+
+        for (let i = 0; i <= segments; i++) {
+            const theta = (i / segments) * 2 * Math.PI;
+            const x = Math.cos(theta) * ringRadius;
+            const z = Math.sin(theta) * ringRadius;
+            const y = z * sinI;
+            const zInclined = z * cosI;
+            positions.push(x, y, zInclined);
+        }
+
+        const vao = gl.createVertexArray();
+        gl.bindVertexArray(vao);
+
+        const posBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+
+        gl.bindVertexArray(null);
+        orbitRingVAOs.push({ vao, count: positions.length / 3, radius: ringRadius, inclination: p.inclination || 0 });
+    });
+}
 
 // ===== Spaceships =====
 let spaceships = [];
@@ -321,6 +355,39 @@ function initScene(canvas){
     loadTexture(gl,"Sun","assets/texture/sun.jpg");
 }
 
+function drawOrbitRing(radius, segments = 128, color = [0.5, 0.5, 0.5], inclination = 0) {
+    const cosI = Math.cos(inclination);
+    const sinI = Math.sin(inclination);
+
+    const positions = [];
+    for (let i = 0; i <= segments; i++) {
+        const theta = (i / segments) * 2 * Math.PI;
+        const x = Math.cos(theta) * radius;
+        let z = Math.sin(theta) * radius;
+        const y = z * sinI;
+        const zInclined = z * cosI;
+        positions.push([x, y, zInclined]);
+    }
+
+    for (let i = 0; i < segments; i++) {
+        drawLine(positions[i], positions[i+1], color);
+    }
+}
+
+function drawLine(p1, p2, color) {
+    const positions = [...p1, ...p2];
+    const normals = [0,1,0,0,1,0]; // dummy
+    const uvs = [0,0,0,0];
+    const indices = [0,1];
+    const vao = createVAO(gl, positions, normals, uvs, indices, gl.LINES);
+
+    gl.bindVertexArray(vao.vao);
+    gl.uniform1i(gl.getUniformLocation(program,"useTexture"),0);
+    gl.uniform3fv(gl.getUniformLocation(program,"uColor"), color);
+    gl.drawElements(gl.LINES, vao.count, gl.UNSIGNED_SHORT, 0);
+    gl.bindVertexArray(null);
+}
+
 // ===== Draw Scene =====
 function drawScene(){
     if(!gl || !program) return;
@@ -393,31 +460,58 @@ function drawScene(){
     // --- Sun ---
     drawSphereInstance([0,0,0],2.5,[1,1,1],true,"Sun");
 
-    // --- Planets & Moons ---
-    planetData.forEach(p=>{
-        const pAngle=angle*p.speed;
-        const x=Math.cos(pAngle)*p.distance;
-        const z=Math.sin(pAngle)*p.distance;
-        const scale=p.radius;
-        const spin=angle*2.0;
-        drawSphereInstance([x,0,z],scale,p.color,false,p.name,spin);
-        p.center=[x,0,z];
-        if(p.atmosphere) drawSphereInstance([x,0,z],scale+0.1,[1,1,1],false,p.name+"_atmo");
-        if(p.ring) drawRing(p.center,scale,p.ring);
-        if(p.moons){
-            p.moons.forEach(m=>{
-                const mAngle=angle*m.speed;
-                const mx=x+Math.cos(mAngle)*m.distance;
-                const mz=z+Math.sin(mAngle)*m.distance;
-                drawSphereInstance([mx,0,mz],m.radius,m.color,false,m.__texKey||null);
-            });
-        }
+    
+    // --- Draw Orbit Rings ---
+    orbitRingVAOs.forEach(ring => {
+        gl.bindVertexArray(ring.vao);
+        gl.uniform3fv(locColor, [0.5, 0.5, 0.5]);
+        gl.uniform1f(locEmissive, 0.3);
+        gl.uniform1i(locUseTexture, 0);
+        gl.drawArrays(gl.LINE_LOOP, 0, ring.count);
+        gl.bindVertexArray(null);
     });
+planetData.forEach(p => {
+    const orbitAngle = angle * p.speed;
+    const radius = p.distance;      // planet orbit radius
+    const incl = p.inclination || 0;
+    const cosI = Math.cos(incl);
+    const sinI = Math.sin(incl);
+
+    // Planet position on the orbit ring
+    const x = Math.cos(orbitAngle) * radius;
+    const zRaw = Math.sin(orbitAngle) * radius;
+    const y = zRaw * sinI;         // vertical component due to inclination
+    const z = zRaw * cosI;         // along the ring plane
+
+    const spin = angle * 2.0;
+    drawSphereInstance([x, y, z], p.radius, p.color, false, p.name, spin);
+    p.center = [x, y, z];
+
+    // Atmosphere
+    if(p.atmosphere) drawSphereInstance([x, y, z], p.radius + 0.1, [1,1,1], false, p.name+"_atmo");
+
+    // Optional planet ring
+    if(p.ring) drawRing(p.center, p.radius, p.ring);
+
+    // Moons orbit around planet center
+    if(p.moons) {
+        p.moons.forEach(m => {
+            const moonAngle = angle * m.speed;
+            const mxRaw = Math.cos(moonAngle) * m.distance;
+            const mzRaw = Math.sin(moonAngle) * m.distance;
+
+            const mx = x + mxRaw;
+            const my = y + mzRaw * sinI;
+            const mz = z + mzRaw * cosI;
+
+            drawSphereInstance([mx, my, mz], m.radius, m.color, false, m.__texKey || null);
+        });
+    }
+});
 
     // --- Asteroids ---
     asteroids.forEach(a=>{
         if(window.cockpit.enabled){
-            // Game mode: move toward camera
             a.z += a.zVelocity;
             if(a.z > window.cockpit.position[2]){
                 a.z = -50 - Math.random()*50;
@@ -426,7 +520,6 @@ function drawScene(){
             }
             a.position = [a.x, a.y, a.z];
         } else {
-            // Normal orbit
             a.angle += a.speed*100*0.01;
             const x = Math.cos(a.angle) * a.distance;
             const z = Math.sin(a.angle) * a.distance;
@@ -443,6 +536,8 @@ function drawScene(){
     // --- Spaceships ---
     drawSpaceships(view,proj,lightPos);
 }
+
+
 
 
 // ===== Draw Spaceships =====
