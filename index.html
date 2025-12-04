@@ -77,33 +77,23 @@
 </head>
 
 <body>
-    <canvas id="glcanvas" style="width: 100vw; height: 100vh; display: block;"></canvas>
 
+    <canvas id="glcanvas"
+        style="width: 100vw; height: 100vh; display: block;"></canvas>
 
-    <button id="cockpit-toggle" 
-        style="
-          position:absolute;
-          top:10px;
-          left:10px;
-          z-index:100;
-          padding:8px 12px;
-          background:#1a1a2e;
-          color:#0ff;
-          border-radius:6px;
-          border:1px solid #0ff;
-          cursor:pointer;
-          font-family: Arial, sans-serif;
-        ">
-  Enter Cockpit 
-</button>
+    <div class="control-column">
+        <button id="cockpit-toggle" class="control-button">
+            Enter Cockpit
+        </button>
 
-    <!-- <div id="cockpit-controls" class="ui-panel" style="display:none;">
-        <h2>COCKPIT CONTROLS</h2>
-        <p><strong>WASD</strong> – Move Forward/Back/Left/Right</p>
-        <p><strong>SPACE</strong> – Move Up</p>
-        <p><strong>SHIFT</strong> – Move Down</p>
-        <p><strong>← →</strong> – Rotate Ship</p>
-    </div> -->
+        <button id="game-mode-toggle" class="control-button" disabled>
+            Enter Game Mode
+        </button>
+
+        <button id="add-asteroids-btn" class="control-button">
+            Add Asteroids
+        </button>
+    </div>
 
     <!-- Planet Info Panel -->
     <div id="planet-info" style="
@@ -132,21 +122,6 @@
         ">X</button>
     </div>
 
-    <!-- Add Asteroids Button -->
-    <button id="add-asteroids" style="
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: #444;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 5px;
-        cursor: pointer;
-        font-family: Arial, sans-serif;
-        z-index: 100;
-    ">Add Asteroids 🚀</button>
-
     <div id="cockpit-window-frame">
         <div class="cockpit-ring"></div>
     </div>
@@ -155,81 +130,32 @@
         <div id="joystick-base"></div>
         <div id="joystick-stick"></div>
     </div>
-    <!-- Score Board -->
-<div id="score-board" style="
-    position: absolute;
-    top: 90px;
-    left: 10px;
-    z-index: 100;
-    padding: 8px 12px;
-    background: #1a1a2e;
-    color: #0f0;
-    border-radius: 6px;
-    border: 1px solid #0f0;
-    font-family: Arial, sans-serif;
-    font-size: 16px;
-">
-    Score: 0
-</div>
-<!-- Enter Game Mode Button -->
-<button id="game-mode-toggle" style="
-    position: absolute;
-    top: 50px;
-    left: 10px;
-    z-index: 100;
-    padding: 8px 12px;
-    background: #1a1a2e;
-    color: #0ff;
-    border-radius: 6px;
-    border: 1px solid #0ff;
-    cursor: pointer;
-    font-family: Arial, sans-serif;
-" disabled>
-  Enter Game Mode
-</button>
+    <div id="score-board">
+        Score: 0
+    </div>
 
-
-<div id="visual-controls" style="
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    z-index: 100;
-    padding: 15px;
-    background: rgba(26, 26, 46, 0.95);
-    color: #0ff;
-    border-radius: 8px;
-    border: 1px solid #0ff;
-    font-family: Arial, sans-serif;
-    min-width: 250px;
-    display: block;">
-    
-    <h3 style="margin: 0 0 15px 0; font-size: 16px; border-bottom: 1px solid #0ff; padding-bottom: 8px;">
-        Visual Controls
-    </h3>
-    
-    <!-- Sun Brightness -->
-    <div style="margin-bottom: 15px;">
-        <label style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-            <span>Sun Brightness:</span>
+    <div id="visual-controls">
+        <h3>Visual Controls</h3>
+        <!-- Sun Brightness -->
+        <div class="slider-row">
+            <label>
+            <span>Sun Brightness</span>
             <span id="sun-brightness-value">1.8</span>
-        </label>
-        <input type="range" id="sun-brightness" 
-            min="0.5" max="5.0" step="0.1" value="1.8"
-            style="width: 100%; cursor: pointer;">
-    </div>
-    
-    <!-- Orbit Speed -->
-    <div style="margin-bottom: 15px;">
-        <label style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-            <span>Orbit Speed:</span>
-            <span id="orbit-speed-value">1.0x</span>
-        </label>
-        <input type="range" id="orbit-speed" 
-            min="0.1" max="3.0" step="0.1" value="0.4"
-            style="width: 100%; cursor: pointer;">
-    </div>
-</div>
+            </label>
+            <input type="range" id="sun-brightness"
+                min="0.5" max="5.0" step="0.1" value="1.8">
+        </div>
 
+        <!-- Orbit Speed -->
+        <div class="slider-row">
+            <label>
+            <span>Orbit Speed</span>
+            <span id="orbit-speed-value">1.0x</span>
+            </label>
+            <input type="range" id="orbit-speed"
+                min="0.2" max="2.0" step="0.1" value="1.0">
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script src="js/planets.js"></script>
@@ -243,11 +169,6 @@
             document.getElementById('planet-info').style.display = 'none';
         });
 
-        // Add asteroids button
-        document.getElementById('add-asteroids').addEventListener('click', () => {
-            if (window.addAsteroids) window.addAsteroids(50); // Add 50 asteroids
-        });
-
         document.addEventListener('DOMContentLoaded', () => {
             // Sun Brightness
             const sunSlider = document.getElementById('sun-brightness');
@@ -259,9 +180,9 @@
                 });
             }
 
-            // Orbit Speed
-            const orbitSlider = document.getElementById('orbit-speed');
-            const orbitValue = document.getElementById('orbit-speed-value');
+        // Orbit Speed
+        const orbitSlider = document.getElementById('orbit-speed');
+        const orbitValue = document.getElementById('orbit-speed-value');
             if(orbitSlider) {
                 orbitSlider.addEventListener('input', (e) => {
                     window.orbitSpeedMultiplier = parseFloat(e.target.value);

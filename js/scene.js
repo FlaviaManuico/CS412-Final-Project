@@ -6,6 +6,7 @@
 let gl, program, sphere;
 let angle = 0;
 let animationSpeed = 1.0;
+window.sunRadius = 3;
 window.sunBrightness = 1.8;
 window.orbitSpeedMultiplier = 1.0;
 
@@ -72,7 +73,7 @@ let gameSpeedMultiplier = 1.0;
 
 function initAsteroids() {
     asteroids = [];
-    const count = 500, inner = 24, outer = 28;
+    const count = 200, inner = 24, outer = 28;
     for (let i = 0; i < count; i++) {
         asteroids.push({
             angle: Math.random() * Math.PI * 2,
@@ -101,7 +102,7 @@ function initGameAsteroids() {
     }
 }
 
-function addAsteroids(count = 50) {
+function addAsteroids(count = 25) {
     if(window.cockpit && window.cockpit.enabled && gameModeActive) {
         for (let i = 0; i < Math.min(count, 5); i++) {
             gameAsteroids.push({
@@ -114,7 +115,7 @@ function addAsteroids(count = 50) {
             });
         }
     } else {
-        const inner = 12, outer = 16;
+        const inner = 24, outer = 28;
         for (let i = 0; i < count; i++) {
             asteroids.push({
                 angle: Math.random() * Math.PI * 2,
@@ -479,7 +480,7 @@ function drawScene(){
     stars.forEach(s=>drawSphereInstance(s.position,s.size,[1,1,1],true,null));
     // --- Sun ---
     // drawSphereInstance([0,0,0],2.5,[1,1,1],true,"Sun");
-    drawSphereInstance([0,0,0], 2.5, [1,1,1], true, "Sun", 0, window.sunBrightness);
+    drawSphereInstance([0,0,0], window.sunRadius, [1,1,1], true, "Sun", 0, window.sunBrightness);
 
     
     // --- Draw Orbit Rings ---

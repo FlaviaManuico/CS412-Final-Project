@@ -205,7 +205,7 @@ const Interaction = (() => {
     // Collision check (robust)
     function checkCollisions(newPos) {
     // Sun collision
-    const sunRadius = 2.5;
+    const sunRadius = window.sunRadius || 3;
     if (Math.hypot(newPos[0], newPos[1], newPos[2]) < sunRadius + 1.5) return true;
 
     // Update planet & moon positions every frame
@@ -356,12 +356,13 @@ const Interaction = (() => {
     // DOM & mouse
     document.addEventListener("DOMContentLoaded", () => {
         const canvas = document.getElementById("glcanvas");
-        const asteroidButton = document.getElementById("add-asteroids");
+        const asteroidButton = document.getElementById("add-asteroids-btn");
         const infoPanel = document.getElementById("planet-info");
         const infoClose = document.getElementById("info-close");
 
         const cockpitBtn = document.getElementById("cockpit-toggle");
         const gameModeBtn = document.getElementById("game-mode-toggle");
+        const scoreBoard    = document.getElementById("score-board");  
 
         cockpitWindowEl  = document.getElementById("cockpit-window-frame");
         cockpitJoystickEl = document.getElementById("cockpit-joystick");
@@ -411,6 +412,7 @@ const Interaction = (() => {
                         gameModeBtn.textContent = "Enter Game Mode";
                         gameModeBtn.disabled = true;
                     }
+                    if (scoreBoard) scoreBoard.style.display = "none";
                 }
             });
         }
@@ -423,6 +425,7 @@ const Interaction = (() => {
                 gameModeBtn.textContent="Game Mode Active";
                 gameModeBtn.disabled = true;
                 console.log("Game Mode Activated!");
+                if (scoreBoard) scoreBoard.style.display = "block";
             });
         }
 
