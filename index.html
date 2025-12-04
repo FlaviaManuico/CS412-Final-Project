@@ -53,7 +53,7 @@
     void main() {
         if (uEmissive > 0.5) {
             vec3 baseColor = (useTexture == 1) ? texture(uTexture, vTexCoord).rgb : uColor;
-            fragColor = vec4(baseColor * 1.8, 1.0);
+            fragColor = vec4(baseColor * uEmissive, 1.0);
             return;
         }
 
@@ -189,6 +189,48 @@
 </button>
 
 
+<div id="visual-controls" style="
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 100;
+    padding: 15px;
+    background: rgba(26, 26, 46, 0.95);
+    color: #0ff;
+    border-radius: 8px;
+    border: 1px solid #0ff;
+    font-family: Arial, sans-serif;
+    min-width: 250px;
+    display: block;">
+    
+    <h3 style="margin: 0 0 15px 0; font-size: 16px; border-bottom: 1px solid #0ff; padding-bottom: 8px;">
+        Visual Controls
+    </h3>
+    
+    <!-- Sun Brightness -->
+    <div style="margin-bottom: 15px;">
+        <label style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span>Sun Brightness:</span>
+            <span id="sun-brightness-value">1.8</span>
+        </label>
+        <input type="range" id="sun-brightness" 
+            min="0.5" max="5.0" step="0.1" value="1.8"
+            style="width: 100%; cursor: pointer;">
+    </div>
+    
+    <!-- Orbit Speed -->
+    <div style="margin-bottom: 15px;">
+        <label style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span>Orbit Speed:</span>
+            <span id="orbit-speed-value">1.0x</span>
+        </label>
+        <input type="range" id="orbit-speed" 
+            min="0.1" max="3.0" step="0.1" value="0.4"
+            style="width: 100%; cursor: pointer;">
+    </div>
+</div>
+
+
     <!-- Scripts -->
     <script src="js/planets.js"></script>
     <script src="js/scene.js"></script>
@@ -204,6 +246,28 @@
         // Add asteroids button
         document.getElementById('add-asteroids').addEventListener('click', () => {
             if (window.addAsteroids) window.addAsteroids(50); // Add 50 asteroids
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Sun Brightness
+            const sunSlider = document.getElementById('sun-brightness');
+            const sunValue = document.getElementById('sun-brightness-value');
+            if(sunSlider) {
+                sunSlider.addEventListener('input', (e) => {
+                    window.sunBrightness = parseFloat(e.target.value);
+                    sunValue.textContent = window.sunBrightness.toFixed(1);
+                });
+            }
+
+            // Orbit Speed
+            const orbitSlider = document.getElementById('orbit-speed');
+            const orbitValue = document.getElementById('orbit-speed-value');
+            if(orbitSlider) {
+                orbitSlider.addEventListener('input', (e) => {
+                    window.orbitSpeedMultiplier = parseFloat(e.target.value);
+                    orbitValue.textContent = window.orbitSpeedMultiplier.toFixed(1) + 'x';
+                });
+            }
         });
     </script>
 </body>

@@ -14,7 +14,7 @@ const Interaction = (() => {
     let isMovingTowardsPlanet = false;
 
     const HOME_TARGET = [0, 0, 0];
-    const HOME_DISTANCE = 35;
+    const HOME_DISTANCE = 60;
     const HOME_HEIGHT = 5;
     let isReturningHome = false;
 
@@ -401,7 +401,7 @@ const Interaction = (() => {
                     console.log("Cockpit activated at:", cockpit.position);
                 } else if(!cockpit.enabled){
                     camera.target=[0,0,0];
-                    camera.distance=35;
+                    camera.distance=60;
                     camera.angle=0;
                     camera.height=5;
                     cockpit.initialized=false;

@@ -6,20 +6,19 @@
 let gl, program, sphere;
 let angle = 0;
 let animationSpeed = 1.0;
-// let cameraAngle = 0;
-// let cameraDistance = 35;
-// let cameraTarget = null;
+window.sunBrightness = 1.8;
+window.orbitSpeedMultiplier = 1.0;
 
 let camera = {
     angle: 0,
-    distance: 35,
+    distance: 60,
     target: [0, 0, 0],
     height: 5
 };
 
 window.cockpit = {
     enabled: false,
-    position: [0, 5, 35],
+    position: [0, 5, 60],
     yaw: 0,
     pitch: 0
 };
@@ -73,7 +72,7 @@ let gameSpeedMultiplier = 1.0;
 
 function initAsteroids() {
     asteroids = [];
-    const count = 500, inner = 12, outer = 16;
+    const count = 500, inner = 24, outer = 28;
     for (let i = 0; i < count; i++) {
         asteroids.push({
             angle: Math.random() * Math.PI * 2,
@@ -411,8 +410,9 @@ function drawScene(){
     if(!gl || !program) return;
     gl.clearColor(0.02,0.02,0.04,1.0);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-    angle += 0.01*animationSpeed;
-
+    // angle += 0.01*animationSpeed;
+    angle += 0.01 * animationSpeed * window.orbitSpeedMultiplier;
+    
     let eye, target;
     if(window.cockpit.enabled){
         const cp=window.cockpit;
@@ -444,7 +444,8 @@ function drawScene(){
     const locUseTexture = gl.getUniformLocation(program,"useTexture");
     const locTexture = gl.getUniformLocation(program,"uTexture");
 
-    function drawSphereInstance(position,scale,color,isEmissive=false,texKey=null,rotationAngle=0){
+    // function drawSphereInstance(position,scale,color,isEmissive=false,texKey=null,rotationAngle=0){
+    function drawSphereInstance(position,scale,color,isEmissive=false,texKey=null,rotationAngle=0,brightness=1.0){
         gl.bindVertexArray(sphere.vao);
         let model = mat4Identity();
         model = mat4Translate(model,position);
@@ -458,7 +459,8 @@ function drawScene(){
         gl.uniformMatrix4fv(locNormal,false,normalMatrix);
         gl.uniform3fv(locLight,lightPos);
         gl.uniform3fv(locColor,color);
-        gl.uniform1f(locEmissive,isEmissive?1.0:0.0);
+        // gl.uniform1f(locEmissive,isEmissive?1.0:0.0);
+        gl.uniform1f(locEmissive,isEmissive?brightness:0.0);
 
         if(texKey && textures[texKey] && textures[texKey].loaded){
             gl.activeTexture(gl.TEXTURE0);
@@ -476,7 +478,8 @@ function drawScene(){
     // --- Stars ---
     stars.forEach(s=>drawSphereInstance(s.position,s.size,[1,1,1],true,null));
     // --- Sun ---
-    drawSphereInstance([0,0,0],2.5,[1,1,1],true,"Sun");
+    // drawSphereInstance([0,0,0],2.5,[1,1,1],true,"Sun");
+    drawSphereInstance([0,0,0], 2.5, [1,1,1], true, "Sun", 0, window.sunBrightness);
 
     
     // --- Draw Orbit Rings ---
