@@ -88,15 +88,15 @@ function initAsteroids() {
 function initGameAsteroids() {
     gameAsteroids = [];
     gameSpeedMultiplier = 1.0;
-    const count = 12;
+    const count = 30;
     
     for (let i = 0; i < count; i++) {
         gameAsteroids.push({
-            x: (Math.random() - 0.5) * 60,
-            y: (Math.random() - 0.5) * 25 + 2,
-            z: -40 - (i * 30) - Math.random() * 50,
+            x: (Math.random() - 0.5) * 50,
+            y: (Math.random() - 0.5) * 20 + 2,
+            z: -40 - (i * 15) - Math.random() * 50,
             size: 0.3 + Math.random() * 0.4,
-            baseVelocity: 0.10 + Math.random() * 0.08,
+            baseVelocity: 0.35 + Math.random() * 0.25,
             position: [0, 0, 0]
         });
     }
@@ -104,13 +104,17 @@ function initGameAsteroids() {
 
 function addAsteroids(count = 25) {
     if(window.cockpit && window.cockpit.enabled && gameModeActive) {
-        for (let i = 0; i < Math.min(count, 5); i++) {
+        const MAX_GAME_ASTEROIDS = 120;
+        if (gameAsteroids.length >= MAX_GAME_ASTEROIDS) return;
+        const toSpawn = Math.min(count, 6);
+
+        for (let i = 0; i < toSpawn; i++) {
             gameAsteroids.push({
                 x: (Math.random() - 0.5) * 60,
                 y: (Math.random() - 0.5) * 25 + 2,
-                z: -40 - Math.random() * 200,
+                z: -40 - Math.random() * 50,
                 size: 0.3 + Math.random() * 0.4,
-                baseVelocity: 0.10 + Math.random() * 0.08,
+                baseVelocity: 0.35 + Math.random() * 0.25,
                 position: [0, 0, 0]
             });
         }

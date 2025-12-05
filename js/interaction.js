@@ -4,6 +4,7 @@
 let score = 0; // Global score
 let gameModeActive = false; // Game mode flag
 let gameTime = 0; 
+let asteroidSpawnTimer = 0;
 let isGameOver = false;
 
 const Interaction = (() => {
@@ -251,29 +252,30 @@ const Interaction = (() => {
       // Game Mode Obstacles
     if (gameModeActive) {
         // Enemy ships
-        if (Array.isArray(spaceships)) {
-            for (const s of spaceships) {
-                if (!s.position) continue;
-                const dx = newPos[0] - s.position[0];
-                const dy = newPos[1] - s.position[1];
-                const dz = newPos[2] - s.position[2];
-                const distance = Math.hypot(dx, dy, dz);
-                const hitRadius = (s.radius || (s.size || 1)*0.7) + 0.6;
-                if (distance < hitRadius) {
-                    onHitObstacle("ship", s);
-                    return true;
-                }
-            }
-        }
+        // if (Array.isArray(spaceships)) {
+        //     for (const s of spaceships) {
+        //         if (!s.position) continue;
+        //         const dx = newPos[0] - s.position[0];
+        //         const dy = newPos[1] - s.position[1];
+        //         const dz = newPos[2] - s.position[2];
+        //         const distance = Math.hypot(dx, dy, dz);
+        //         const hitRadius = (s.radius || (s.size || 1)*0.7) + 0.6;
+        //         if (distance < hitRadius) {
+        //             onHitObstacle("ship", s);
+        //             return true;
+        //         }
+        //     }
+        // }
            // Asteroids
-        if (Array.isArray(asteroids)) {
-            for (const a of asteroids) {
+        if (typeof gameAsteroids !== "undefined" && Array.isArray(gameAsteroids)) {
+            for (const a of gameAsteroids) {
                 if (!a.position) continue;
                 const dx = newPos[0] - a.position[0];
                 const dy = newPos[1] - a.position[1];
                 const dz = newPos[2] - a.position[2];
                 const distance = Math.hypot(dx, dy, dz);
-                const hitRadius = (a.size || 0.3) + 0.8;
+                // const hitRadius = (a.size || 0.3) + 0.8;
+                const hitRadius = (a.size || 0.4) + 1.2;
                 if (distance < hitRadius) {
                     onHitObstacle("asteroid", a);
                     return true;
@@ -287,11 +289,21 @@ const Interaction = (() => {
 
     // handle hit: deduct score, set return-home, reset cockpit position
     function onHitObstacle(type, obj) {
-        score = Math.max(0, Math.floor(score) - 10);
+        // score = Math.max(0, Math.floor(score) - 10);
+        const finalScore = Math.floor(score);
+        
+        console.log(`Hit ${type}! Score now ${finalScore}. Returning home...`);
+        
+        if (window.showGameOver) {
+            window.showGameOver(finalScore);
+        }
+
+        gameModeActive = false;
+        isGameOver = true;
+
+        score = 0;
         const scoreEl = document.getElementById("score-board");
         if (scoreEl) scoreEl.textContent = "Score: " + Math.floor(score);
-
-        console.log(`Hit ${type}! Score now ${score}. Returning home...`);
 
         // Immediately move cockpit back to home spawn coords (so the player "teleports" home)
         if (window.cockpit) {
@@ -302,11 +314,6 @@ const Interaction = (() => {
 
         // Animate camera back to home as well
         isReturningHome = true;
-
-        // optionally disable game mode until player gets home (reduce accidental double-hit)
-        gameModeActive = false;
-
-        // small visual feedback: flash info panel or log (you can add UI here)
     }
     
     // Update cockpit with collisions & scoring
@@ -316,7 +323,15 @@ const Interaction = (() => {
 
         if(gameModeActive) {
             gameTime += dt;
-            window.gameSpeedMultiplier = 1.0 + Math.floor(window.gameTime / 5.0) * 0.2
+            asteroidSpawnTimer += dt;
+            // window.gameSpeedMultiplier = 1.0 + Math.floor(window.gameTime / 5.0) * 0.2
+            window.gameSpeedMultiplier = 1.0 + Math.floor(gameTime / 10.0) * 0.1;
+            if (asteroidSpawnTimer > 3) {
+                asteroidSpawnTimer = 0;
+                if (window.addAsteroids) {
+                    window.addAsteroids(4);
+                }
+            }
         }
 
     // Rotation
@@ -382,8 +397,21 @@ const Interaction = (() => {
         const infoClose = document.getElementById("info-close");
 
         const cockpitBtn = document.getElementById("cockpit-toggle");
+        const cockpitModal    = document.getElementById("cockpit-modal");
+        const cockpitOkBtn    = document.getElementById("cockpit-ok-btn");
+
         const gameModeBtn = document.getElementById("game-mode-toggle");
-        const scoreBoard    = document.getElementById("score-board");  
+        const gameStartModal  = document.getElementById("game-start-modal");
+        const gameStartOkBtn  = document.getElementById("game-start-ok-btn");
+
+        const gameOverModal   = document.getElementById("game-over-modal");
+        const gameRetryBtn    = document.getElementById("game-retry-btn");
+
+        const finalScoreSpan  = document.getElementById("final-score");
+        const scoreBoard    = document.getElementById("score-board"); 
+
+        let cockpitHelpShown = false;
+        let gameHelpShown    = false; 
 
         cockpitWindowEl  = document.getElementById("cockpit-window-frame");
         cockpitJoystickEl = document.getElementById("cockpit-joystick");
@@ -404,6 +432,19 @@ const Interaction = (() => {
                 //cockpitMode = cockpit.enabled;
                 const wasEnabled = cockpit.enabled;
                 cockpit.enabled = !cockpit.enabled;
+
+                setTimeout(() => {
+                    if (window.cockpit && window.cockpit.enabled && !cockpitHelpShown) {
+                        cockpitHelpShown = true;
+                        if (cockpitModal) cockpitModal.classList.remove("hidden");
+                    }
+                }, 0);
+
+                if (cockpitOkBtn && cockpitModal) {
+                    cockpitOkBtn.addEventListener("click", () => {
+                        cockpitModal.classList.add("hidden");
+                    });
+                }
 
                 if(gameModeBtn) gameModeBtn.disabled = !cockpit.enabled;
 
@@ -441,12 +482,38 @@ const Interaction = (() => {
         // Game mode toggle
         if(gameModeBtn){
             gameModeBtn.addEventListener("click", ()=>{
+                if (window.cockpit && window.cockpit.enabled) {
+                    if (!gameHelpShown && gameStartModal) {
+                        gameHelpShown = true;
+                        gameStartModal.classList.remove("hidden");
+                    }
+                }
+
                 if(!window.cockpit || !window.cockpit.enabled) return;
                 gameModeActive = true;
                 gameModeBtn.textContent="Game Mode Active";
                 gameModeBtn.disabled = true;
                 console.log("Game Mode Activated!");
                 if (scoreBoard) scoreBoard.style.display = "block";
+            });
+        }
+
+        if (gameStartOkBtn && gameStartModal) {
+            gameStartOkBtn.addEventListener("click", () => {
+                gameStartModal.classList.add("hidden");
+            });
+        }
+
+        window.showGameOver = function(score) {
+            if (finalScoreSpan) {
+                finalScoreSpan.textContent = Math.floor(score);
+            }
+            if (gameOverModal) gameOverModal.classList.remove("hidden");
+        };
+
+        if (gameRetryBtn && gameOverModal) {
+            gameRetryBtn.addEventListener("click", () => {
+                location.reload();
             });
         }
 

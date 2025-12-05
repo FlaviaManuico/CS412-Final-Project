@@ -157,6 +157,67 @@
         </div>
     </div>
 
+    <!-- Windows -->
+    <div id="intro-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h1>Cosmic Solar System</h1>
+        <p>Welcome aboard, pilot!</p>
+        <p>
+        Explore an interactive 3D solar system where you can observe the planets, enter the cockpit of your ship, and experience space from a first-person view.</p>
+        <p>Use the Visual Controls panel to adjust the Sun’s brightness and the orbit speed, then jump into the cockpit to start your space journey.</p>
+        <button id="intro-start-btn" class="modal-button">
+        Start Exploration
+        </button>
+    </div>
+    </div>
+
+    <!-- Cockpit Instructions -->
+    <div id="cockpit-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h2>Cockpit Instructions</h2>
+        <p>You are now entering the pilot’s seat of your ship.</p>
+        <p>Use these controls to move around the solar system and explore from a first-person view:</p>
+        <p>You can still click on planets to open their information cards while you are in the cockpit view.</p>
+        <p><b>W / S</b> – Move Forward / Backward</p>
+        <p><b>A / D</b> – Strafe left / right</p>
+        <p><b>SPACE</b> – Move up &nbsp;&nbsp;<b>SHIFT</b> – Move down</p>
+        <p><b>← →</b> Arrow keys – Rotate the ship left / right</p>
+        <button id="cockpit-ok-btn" class="modal-button">
+        Got it, let's fly!
+        </button>
+    </div>
+    </div>
+
+    <!-- Game Mode Start Window-->
+    <div id="game-start-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h2>Game Mode</h2>
+        <p>
+        Game Mode adds a simple arcade challenge on top of the solar system simulation.</p> 
+        <p>While you are in the cockpit:</p>
+        <p><b>Asteroids will appear in front of your ship.</b></p>
+        <p><b>Move and dodge them to avoid a collision.</b></p>
+        <p><b>Each asteroid you avoid increases your score.</b></p>
+        <p>Try to stay alive as long as you can and reach the highest possible score before your ship is hit.</p>
+        <button id="game-start-ok-btn" class="modal-button">
+        Start Game
+        </button>
+    </div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="game-over-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h2>Game Over</h2>
+        <p>Your ship has been hit by an asteroid.</p>
+        <p>Your final score: <span id="final-score">0</span></p>
+        <button id="game-retry-btn" class="modal-button">
+        Try Again
+        </button>
+    </div>
+    </div>
+
+
     <!-- Scripts -->
     <script src="js/planets.js"></script>
     <script src="js/scene.js"></script>
@@ -190,6 +251,18 @@
                 });
             }
         });
+
+    // Windows
+    const introModal      = document.getElementById("intro-modal");
+    const introStartBtn   = document.getElementById("intro-start-btn");
+
+    // Intro
+    if (introStartBtn && introModal) {
+        introStartBtn.addEventListener("click", () => {
+            introModal.classList.add("hidden");
+        });
+    }
+
     </script>
 </body>
 </html>

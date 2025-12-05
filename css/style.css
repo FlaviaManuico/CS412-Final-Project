@@ -224,3 +224,60 @@ body {
     width: 100%;
     cursor: pointer;
 }
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 300; /* por encima de todo */
+}
+
+.modal-overlay.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: rgba(10, 20, 40, 0.95);
+    border-radius: 16px;
+    padding: 20px 24px;
+    max-width: 380px;
+    width: 90%;
+    color: #eafcff;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    border: 1px solid rgba(0, 229, 255, 0.8);
+    box-shadow: 0 0 24px rgba(0, 229, 255, 0.4);
+    text-align: left;
+}
+
+.modal-content h1,
+.modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #00e5ff;
+}
+
+.modal-content p {
+    margin: 20px 0;
+    font-size: 13px;
+}
+
+.modal-button {
+    margin-top: 14px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 229, 255, 0.9);
+    background: rgba(0, 229, 255, 0.15);
+    color: #eafcff;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+}
+
+.modal-button:hover {
+    background: rgba(0, 229, 255, 0.28);
+}
