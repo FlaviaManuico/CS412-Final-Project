@@ -29,28 +29,28 @@ const textures = {};
 
 // ===== Planet Data with rings & atmospheres =====
 const planetData = [
-    {name:"Mercury", radius:0.38, distance:4, speed:4.15, color:[0.7,0.7,0.7], texture:'assets/texture/mercury.jpg',
+    {name:"Mercury", radius:0.38, distance:5, speed:4.15, color:[0.7,0.7,0.7], texture:'assets/texture/mercury.jpg',
      info:{realRadius:"2,439.7 km", tilt:"0.034°", rotationPeriod:"58.6 Earth days", orbitPeriod:"88 Earth days", distance:"57.9 million km", moons:0, description:"The smallest planet in our solar system and nearest to the Sun."}},
     
-    {name:"Venus", radius:0.95, distance:5.5, speed:1.62, color:[0.9,0.7,0.4], texture:"assets/texture/venus.jpg",
+    {name:"Venus", radius:0.95, distance:7, speed:1.62, color:[0.9,0.7,0.4], texture:"assets/texture/venus.jpg",
      info:{realRadius:"6,051.8 km", tilt:"177.4°", rotationPeriod:"243 Earth days", orbitPeriod:"225 Earth days", distance:"108.2 million km", moons:0, description:"Second planet from the Sun, known for its extreme temperatures and thick atmosphere."}},
     
-    {name:"Earth", radius:1, distance:7, speed:1.0, color:[0.2,0.5,1.0], texture:"assets/texture/earth.jpg",
+    {name:"Earth", radius:1, distance:10, speed:1.0, color:[0.2,0.5,1.0], texture:"assets/texture/earth.jpg",
      moons:[{name:"Moon", radius:0.27,distance:1.5,speed:2,color:[0.8,0.8,0.8], texture:"assets/texture/moon.jpg"}],
      info:{realRadius:"6,371 km", tilt:"23.5°", rotationPeriod:"24 hours", orbitPeriod:"365 days", distance:"150 million km", moons:1, description:"Third planet from the Sun and the only known planet to harbor life."}},
     
-    {name:"Mars", radius:0.53, distance:9, speed:0.53, color:[1.0,0.3,0.2], texture:"assets/texture/mars.jpg",
+    {name:"Mars", radius:0.53, distance:13, speed:0.53, color:[1.0,0.3,0.2], texture:"assets/texture/mars.jpg",
      moons:[{name:"Phobos", radius:0.14,distance:0.8,speed:3,color:[0.6,0.6,0.6], texture:"assets/texture/phobos.jpg"},
             {name:"Deimos", radius:0.08,distance:1.1,speed:2.5,color:[0.7,0.7,0.7], texture:"assets/texture/deimos.jpg"}],
      info:{realRadius:"3,389.5 km", tilt:"25.19°", rotationPeriod:"1.03 Earth days", orbitPeriod:"687 Earth days", distance:"227.9 million km", moons:2, description:"Known as the Red Planet, famous for its reddish appearance and potential for human colonization."}},
     
-    {name:"Jupiter", radius:2.2, distance:13, speed:0.08, color:[0.9,0.7,0.5], texture:"assets/texture/jupiter.jpg",
+    {name:"Jupiter", radius:2.2, distance:16, speed:0.08, color:[0.9,0.7,0.5], texture:"assets/texture/jupiter.jpg",
      info:{realRadius:"69,911 km", tilt:"3.13°", rotationPeriod:"9.9 hours", orbitPeriod:"12 Earth years", distance:"778.5 million km", moons:95, description:"The largest planet in our solar system, known for its Great Red Spot."}},
     
-    {name:"Saturn", radius:1.9, distance:17, speed:0.03, color:[0.9,0.8,0.6], texture:"assets/texture/saturn.jpg",
+    {name:"Saturn", radius:1.9, distance:21, speed:0.03, color:[0.9,0.8,0.6], texture:"assets/texture/saturn.jpg",
      info:{realRadius:"58,232 km", tilt:"26.73°", rotationPeriod:"10.7 hours", orbitPeriod:"29.5 Earth years", distance:"1.4 billion km", moons:146, description:"Distinguished by its extensive ring system, the second-largest planet in our solar system."}},
     
-    {name:"Uranus", radius:1.0, distance:23, speed:0.01, color:[0.5,0.8,0.9], texture:"assets/texture/uranus.jpg",
+    {name:"Uranus", radius:1.0, distance:26, speed:0.01, color:[0.5,0.8,0.9], texture:"assets/texture/uranus.jpg",
      info:{realRadius:"25,362 km", tilt:"97.77°", rotationPeriod:"17.2 hours", orbitPeriod:"84 Earth years", distance:"2.87 billion km", moons:27, description:"Known for its tilted axis and faint rings."}},
     
     {name:"Neptune", radius:0.98, distance:30, speed:0.006, color:[0.3,0.4,0.9], texture:"assets/texture/neptune.jpg",
@@ -486,16 +486,22 @@ function drawScene(){
     // drawSphereInstance([0,0,0],2.5,[1,1,1],true,"Sun");
     drawSphereInstance([0,0,0], window.sunRadius, [1,1,1], true, "Sun", 0, window.sunBrightness);
 
-    
-    // --- Draw Orbit Rings ---
-    orbitRingVAOs.forEach(ring => {
-        gl.bindVertexArray(ring.vao);
-        gl.uniform3fv(locColor, [0.5, 0.5, 0.5]);
-        gl.uniform1f(locEmissive, 0.3);
-        gl.uniform1i(locUseTexture, 0);
-        gl.drawArrays(gl.LINE_LOOP, 0, ring.count);
-        gl.bindVertexArray(null);
-    });
+   // ===== Draw Orbit Rings =====
+orbitRingVAOs.forEach(ring => {
+    gl.bindVertexArray(ring.vao);
+    gl.uniform1i(gl.getUniformLocation(program, "useTexture"), 0);
+    gl.uniform3fv(gl.getUniformLocation(program, "uColor"), [0.4, 0.4, 0.4]);
+
+    let model = mat4Identity();
+    // optional: tilt rings by inclination
+    model = mat4RotateX(model, ring.inclination);
+
+    gl.uniformMatrix4fv(gl.getUniformLocation(program, "uModel"), false, model);
+
+    gl.drawArrays(gl.LINE_STRIP, 0, ring.count);
+});
+gl.bindVertexArray(null);
+
 planetData.forEach(p => {
     const orbitAngle = angle * p.speed;
     const radius = p.distance;      // planet orbit radius
