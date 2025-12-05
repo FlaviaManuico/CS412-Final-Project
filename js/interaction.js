@@ -53,13 +53,34 @@ const Interaction = (() => {
     // -------------------------
     // Project 3D world position -> NDC
     function projectToNDC(worldPos) {
-        const camX = Math.sin(camera.angle) * camera.distance;
-        const camZ = Math.cos(camera.angle) * camera.distance;
-        const camY = camera.height;
+        let eye, target;
+        if (window.cockpit && window.cockpit.enabled) {
+            const cp = window.cockpit;
+            const cosPitch = Math.cos(cp.pitch), sinPitch = Math.sin(cp.pitch);
+            const cosYaw = Math.cos(cp.yaw),   sinYaw = Math.sin(cp.yaw);
+            const forward = [sinYaw * cosPitch, sinPitch, cosYaw * cosPitch];
 
-        const view = lookAt([camX, camY, camZ], camera.target, [0, 1, 0]);
+            eye    = cp.position;
+            target = [eye[0] + forward[0],
+                    eye[1] + forward[1],
+                    eye[2] + forward[2]];
+        } else {
+            const camX = Math.sin(camera.angle) * camera.distance;
+            const camZ = Math.cos(camera.angle) * camera.distance;
+            const camY = camera.height;
+
+            eye    = [camX, camY, camZ];
+            target = camera.target;
+        }
+        // const camX = Math.sin(camera.angle) * camera.distance;
+        // const camZ = Math.cos(camera.angle) * camera.distance;
+        // const camY = camera.height;
+
+        // const view = lookAt([camX, camY, camZ], camera.target, [0, 1, 0]);
+        const view   = lookAt(eye, target, [0, 1, 0]);
         const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
         const proj = perspective(Math.PI/4, aspect, 0.1, 200.0);
+        // const proj   = perspective(Math.PI / 4, aspect, 0.1, 200.0);
 
         const v = multiplyMat4Vec4(proj, multiplyMat4Vec4(view, [...worldPos, 1]));
         if (Math.abs(v[3]) < 1e-6) return null;
